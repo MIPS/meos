@@ -1,0 +1,12 @@
+config ZLIB
+bool "zlib 1.2.8"
+default n
+help
+	Build zlib.
+
+config ZLIB_SRC
+depends on ZLIB
+string "zlib URL"
+default "https://fossies.org/linux/misc/"
+help
+	URL stem to download zlib from. Must include trailing /.

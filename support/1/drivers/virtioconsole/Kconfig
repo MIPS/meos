@@ -1,0 +1,20 @@
+menuconfig DRIVER_VIRTIO_CONSOLE
+bool "Virtio console"
+default Y
+select DRIVER_UART
+help
+	Driver for the Virtio console.
+
+config DRIVER_VIRTIO_CONSOLE_TX_BUFFER
+int "Default Tx buffer size"
+default 128
+depends on DRIVER_VIRTIO_CONSOLE
+help
+	Default transmission buffer size. May be overridden by initialisation.
+
+config DRIVER_VIRTIO_CONSOLE_RX_BUFFER
+int "Default Rx buffer size"
+default 128
+depends on DRIVER_VIRTIO_CONSOLE
+help
+	Default transmission buffer size. May be overridden by initialisation.

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="fdc" prefix="FDC" modtype="Special">
+	<description>Implements an FDC UART driver.</description>
+	<imports>kernel</imports>
+	<imports>uart</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">meos/uart/uart.h</include>
+		<typedef>
+			<c>struct FDC_tag FDC_T</c>(Incomplete) FDC system object definition.
+		</typedef>
+		<func name="FDC_init">
+			<arg type="FDC_T *" name="fdc" traceable="Y">Pointer to FDC system object.</arg>
+			<arg type="uint8_t *" name="txBuf">Transmission byte buffer.</arg>
+			<arg type="size_t" name="txLen">Number of bytes in <code>txBuf</code>.</arg>
+			<arg type="uint8_t *" name="rxBuf">Receive byte buffer.</arg>
+			<arg type="size_t" name="rxLen">Number of bytes in <code>rxBuf</code>.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((fdc != NULL) &amp;&amp; (txBuf != NULL) &amp;&amp; (txLen > 0) &amp;&amp; (rxBuf != NULL) &amp;&amp; (rxLen > 0))</precondition>
+			</limitations>
+			<description>Initialises the FDC described by <code>fdc</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+/* complete the FDC_T definition... */
+struct FDC_tag {
+	UART_T	uart;
+	uint32_t channel;
+};
+		</epilogue>
+	</interface>
+</module>

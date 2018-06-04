@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="VIRTIOCONSOLE" prefix="VIRTIOCONSOLE" modtype="Special">
+	<description>Implements an virtio console driver.</description>
+	<imports>kernel</imports>
+	<imports>uart</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">meos/uart/uart.h</include>
+		<typedef>
+			<c>struct VIRTIOCONSOLE_tag VIRTIOCONSOLE_T</c>(Incomplete) virtio console system object definition.
+		</typedef>
+		<func name="VIRTIOCONSOLE_init">
+			<arg type="VIRTIOCONSOLE_T *" name="console" traceable="Y">Pointer to virtio console system object.</arg>
+			<arg type="uint8_t *" name="txBuf">Transmission byte buffer.</arg>
+			<arg type="size_t" name="txLen">Number of bytes in <code>txBuf</code>.</arg>
+			<arg type="uint8_t *" name="rxBuf">Receive byte buffer.</arg>
+			<arg type="size_t" name="rxLen">Number of bytes in <code>rxBuf</code>.</arg>
+			<arg type="IRQ_DESC_T *" name="irq">IRQ descriptor for specified virtio device.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((uart != NULL) &amp;&amp; (txBuf != NULL) &amp;&amp; (txLen > 0) &amp;&amp; (rxBuf != NULL) &amp;&amp; (rxLen > 0))</precondition>
+			</limitations>
+			<description>Initialises the virtio console described by <code>console</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+
+typedef struct {
+	MQ_HOSTHEADER_T header;
+	char data[16];
+} VIRTIOCONSOLEMSG_T;
+/* complete the VIRTIOCONSOLE_T definition... */
+struct VIRTIOCONSOLE_tag {
+	UART_T	uart;
+	uintptr_t	pAddr;
+	void*		ack;
+	MQ_MSG_T	rheaders[16];
+	KRN_POOL_T	rhpool;
+	VIRTIOCONSOLEMSG_T rmsgs[16];
+	KRN_POOL_T	rmpool;
+	MQDEVICE_T 	rq;
+	uint8_t rring[8192];
+	MQ_MSG_T	wheaders[16];
+	KRN_POOL_T	whpool;
+	VIRTIOCONSOLEMSG_T wmsgs[16];
+	KRN_POOL_T	wmpool;
+	MQDEVICE_T 	wq;
+	uint8_t wring[8192];
+};
+		</epilogue>
+	</interface>
+</module>

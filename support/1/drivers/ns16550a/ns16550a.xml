@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="ns16550a" prefix="NS16550A" modtype="Special">
+	<description>Implements an NS16550A UART driver.</description>
+	<imports>kernel</imports>
+	<imports>uart</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">meos/uart/uart.h</include>
+		<typedef>
+			<c>struct NS16550A_tag NS16550A_T</c>(Incomplete) NS16550A UART system object definition.
+		</typedef>
+		<func name="NS16550A_init">
+			<arg type="NS16550A_T *" name="uart" traceable="Y">Pointer to NS16550A UART system object.</arg>
+			<arg type="uint8_t *" name="txBuf">Transmission byte buffer.</arg>
+			<arg type="size_t" name="txLen">Number of bytes in <code>txBuf</code>.</arg>
+			<arg type="uint8_t *" name="rxBuf">Receive byte buffer.</arg>
+			<arg type="size_t" name="rxLen">Number of bytes in <code>rxBuf</code>.</arg>
+			<arg type="IRQ_DESC_T *" name="irq">IRQ descriptor for specified UART.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((uart != NULL) &amp;&amp; (txBuf != NULL) &amp;&amp; (txLen > 0) &amp;&amp; (rxBuf != NULL) &amp;&amp; (rxLen > 0))</precondition>
+			</limitations>
+			<description>Initialises the UART described by <code>uart</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+/* complete the NS16550A_T definition... */
+struct NS16550A_tag {
+	UART_T	uart;
+	uintptr_t	pAddr;
+	volatile void*	vAddr;
+	uint32_t	clock;
+	uint16_t	width;
+	uint16_t	pitch;
+};
+		</epilogue>
+	</interface>
+</module>

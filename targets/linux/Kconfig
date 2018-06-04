@@ -1,0 +1,84 @@
+menu "LINUX configuration"
+	depends on ARCH_LINUX
+
+	choice
+		prompt "Target architecture"
+		default ARCH_LINUX_X64
+		help
+			Selects the architecture MEOS will target.
+
+		config ARCH_LINUX_X86
+		bool "Intel x86 Linux"
+		select DEBUG_HAVE_BT
+		help
+			Target Intel x86 Linux machines, using the default toolchain.
+
+		config ARCH_LINUX_X64
+		bool "Intel x86-64 Linux"
+		select DEBUG_HAVE_BT
+		help
+			Target Intel x86-64 Linux machines, using the default toolchain.
+
+		config ARCH_LINUX_MIPS
+		bool "MIPS MTI Linux"
+		select DEBUG_HAVE_BT
+		help
+			Target MIPS Linux machines, using the mips-mti-linux-gnu toolchain.
+
+		config ARCH_LINUX_MIPS_IMG
+		bool "MIPS IMG Linux"
+		select DEBUG_HAVE_BT
+		help
+			Target MIPS Linux machines, using the mips-img-linux-gnu toolchain.
+
+
+	endchoice
+
+	config TOOLS_AR
+	string
+	default "ar" if ARCH_LINUX_X86 || ARCH_LINUX_X64
+
+	config TOOLS_CC
+	string
+	default "cc" if ARCH_LINUX_X86 || ARCH_LINUX_X64
+
+	config TOOLS_CXX
+	string
+	default "g++" if ARCH_LINUX_X86 || ARCH_LINUX_X64
+
+	config TOOLS_OBJCOPY
+	string
+	default "objcopy" if ARCH_LINUX_X86 || ARCH_LINUX_X64
+
+	config TOOLS_STRIP
+	string
+	default "strip" if ARCH_LINUX_X86 || ARCH_LINUX_X64
+
+	config TOOLS_AR
+	string
+	default "mips-mti-linux-gnu-ar" if ARCH_LINUX_MIPS
+
+	config TOOLS_CC
+	string
+	default "mips-mti-linux-gnu-gcc" if ARCH_LINUX_MIPS
+
+	config TOOLS_CXX
+	string
+	default "mips-mti-linux-gnu-g++" if ARCH_LINUX_MIPS
+
+	config TOOLS_OBJCOPY
+	string
+	default "mips-mti-linux-gnu-objcopy" if ARCH_LINUX_MIPS
+
+	config TOOLS_STRIP
+	string
+	default "mips-mti-linux-gnu-strip" if ARCH_LINUX_MIPS
+
+	config ARCH_LINUX_FLOAT
+	bool "Floating point support"
+	select FEATURE_FLOAT
+	help
+		Build with support for floating point. Note that MEOS relies upon Linux
+		to manage FPU context.
+
+endmenu

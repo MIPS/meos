@@ -1,0 +1,4 @@
+config BSP_CUSTOM
+bool "Custom, defined by .dts devicetree file"
+help
+	Use a user specified .dts devicetree file to create a board support package.

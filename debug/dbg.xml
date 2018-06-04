@@ -1,0 +1,632 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="debug" prefix="DBG" modtype="Functional">
+	<description>Provides general purpose functions for run time debug
+	output.</description>
+	<interface>
+		<prologue>
+#include "meos/config.h"
+#include &lt;stddef.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;limits.h&gt;
+#include "meos/debug/paranoia.h"
+
+#ifdef CONFIG_DEBUG_PARANOIA
+
+#define PARAEXTERN(NAME, TYPE) \
+extern TYPE _paraItem_ ## NAME; \
+extern DBG_PARATYPE_T _paraDesc_ ## NAME ;
+
+#if !defined(__cplusplus)
+#define PARATYPE(NAME, TYPE, GETCHILD, CHILDTYPE, GETCHILDTYPE, NEXT, GETNEXT) \
+TYPE _paraItem_ ## NAME; \
+DBG_PARATYPE_T _paraDesc_ ## NAME = { \
+	._frontSentinel = 0xb0071e55, \
+	._fourcc = 0x21524547, \
+	.frontOffset = offsetof(TYPE, _frontSentinel) / sizeof(uintptr_t), \
+	.fourccOffset = offsetof(TYPE, _fourcc) / sizeof(uintptr_t), \
+	.fourcc = 0, \
+	.nextOffset = offsetof(TYPE, _nextPar) / sizeof(uintptr_t), \
+	.backOffset = offsetof(TYPE, _backSentinel) / sizeof(uintptr_t), \
+	.child = &amp;_paraItem_ ## NAME, \
+	.getChild = GETCHILD, \
+	.childType = CHILDTYPE, \
+	.getChildType = GETCHILDTYPE, \
+	.getNext = GETNEXT, \
+	._nextPar = NEXT, \
+	._backSentinel = 0xb007ab1e \
+}; \
+void _paraConstructor_ ## NAME (void) __attribute__((constructor,no_instrument_function)); \
+void _paraConstructor_ ## NAME (void) \
+{ \
+	((uintptr_t*)&amp;_paraItem_ ## NAME)[_paraDesc_ ## NAME.nextOffset] = 0; \
+	_paraDesc_ ## NAME.fourcc = (((const uintptr_t)#NAME[0]) &lt;&lt; 24) | \
+								 (((const uintptr_t)#NAME[1]) &lt;&lt; 16) | \
+								 (((const uintptr_t)#NAME[2]) &lt;&lt; 8) | \
+								 (((const uintptr_t)#NAME[3])); \
+	_DBG_paranoidAdd(&amp;_paraDesc_Para, (void*)&amp;_paraItem_Para, (void*)&amp;_paraDesc_ ## NAME); \
+	DBG_goodPtr((uintptr_t) &amp; ((uintptr_t *) &amp; _paraItem_ ## NAME)[_paraDesc_ ## NAME.nextOffset]); \
+}
+#else
+void _DBG_paraParaInit(void);
+#define PARATYPE(NAME, TYPE, GETCHILD, CHILDTYPE, GETCHILDTYPE, NEXT, GETNEXT) \
+TYPE _paraItem_ ## NAME; \
+DBG_PARATYPE_T _paraDesc_ ## NAME; \
+void _paraConstructor_ ## NAME (void) __attribute__((constructor,no_instrument_function)); \
+void _paraConstructor_ ## NAME (void) \
+{ \
+	_DBG_paraParaInit(); \
+	_paraDesc_ ## NAME._frontSentinel = 0xb0071e55; \
+	_paraDesc_ ## NAME._fourcc = 0x21524547; \
+	_paraDesc_ ## NAME.frontOffset = offsetof(TYPE, _frontSentinel) / sizeof(uintptr_t); \
+	_paraDesc_ ## NAME.fourccOffset = offsetof(TYPE, _fourcc) / sizeof(uintptr_t); \
+	_paraDesc_ ## NAME.fourcc = 0; \
+	_paraDesc_ ## NAME.nextOffset = offsetof(TYPE, _nextPar) / sizeof(uintptr_t); \
+	_paraDesc_ ## NAME.backOffset = offsetof(TYPE, _backSentinel) / sizeof(uintptr_t); \
+	_paraDesc_ ## NAME.child = &amp;_paraItem_ ## NAME; \
+	_paraDesc_ ## NAME.getChild = (DBG_PARACALL_T)GETCHILD; \
+	_paraDesc_ ## NAME.childType = (struct DBG_paratype_tag *)CHILDTYPE; \
+	_paraDesc_ ## NAME.getChildType = (DBG_PARACALL_T)GETCHILDTYPE; \
+	_paraDesc_ ## NAME.getNext = (DBG_PARACALL_T)GETNEXT; \
+	_paraDesc_ ## NAME._nextPar = NEXT; \
+	_paraDesc_ ## NAME._backSentinel = 0xb007ab1e; \
+	((uintptr_t*)&amp;_paraItem_ ## NAME)[_paraDesc_ ## NAME.nextOffset] = 0; \
+	_paraDesc_ ## NAME.fourcc = (((const uintptr_t)#NAME[0]) &lt;&lt; 24) | \
+								 (((const uintptr_t)#NAME[1]) &lt;&lt; 16) | \
+								 (((const uintptr_t)#NAME[2]) &lt;&lt; 8) | \
+								 (((const uintptr_t)#NAME[3])); \
+	_DBG_paranoidAdd(&amp;_paraDesc_Para, (void*)&amp;_paraItem_Para, (void*)&amp;_paraDesc_ ## NAME); \
+	DBG_goodPtr((uintptr_t) &amp; ((uintptr_t *) &amp; _paraItem_ ## NAME)[_paraDesc_ ## NAME.nextOffset]); \
+}
+#endif
+
+struct DBG_paratype_tag;
+
+typedef void *(*DBG_PARACALL_T)(void *, void *, void *);
+
+typedef struct DBG_paratype_tag {
+	PARAHEAD;
+	uintptr_t frontOffset;
+	uintptr_t fourccOffset;
+	uintptr_t fourcc;
+	uintptr_t nextOffset;
+	uintptr_t backOffset;
+	void *child;
+	DBG_PARACALL_T getChild;
+	struct DBG_paratype_tag *childType;
+	DBG_PARACALL_T getChildType;
+	DBG_PARACALL_T getNext;
+	PARATAIL;
+} DBG_PARATYPE_T;
+
+#define PARAADD(NAME, ITEM) _DBG_paranoidAdd(&amp;_paraDesc_ ## NAME, &amp;_paraItem_ ## NAME, (void*)(ITEM))
+#define PARAADDI(NAME, ITEM) _DBG_paranoidAddItem(&amp;_paraDesc_ ## NAME, NULL, (void*)(ITEM))
+#define PARADEL(NAME, ITEM) _DBG_paranoidRemove(&amp;_paraDesc_ ## NAME, (void*)(ITEM))
+#define PARACHECK() _DBG_paranoidVerify()
+
+void DBG_paranoidSweep(uintptr_t start, uintptr_t end);
+
+#ifndef MEOS_NO_FUNCS
+
+void *_DBG_paranoidGetNext(void *vtype, void *vlist, void *vitem);
+void *_DBG_paranoidGetChildType(void *vtype, void *vlist, void *vitem);
+void _DBG_paranoidAddItem(DBG_PARATYPE_T * type, void *vlist, void *vitem);
+void _DBG_paranoidAdd(DBG_PARATYPE_T * type, void *vlist, void *vitem);
+void _DBG_paranoidVerify();
+void _DBG_paranoidRemove(DBG_PARATYPE_T * type, void *vitem);
+
+#endif
+
+extern DBG_PARATYPE_T _paraDesc_Para, _paraItem_Para;
+extern int32_t _DBG_disableParanoia;
+#define DBG_raisePPL() _DBG_disableParanoia++
+#define DBG_restorePPL(X) _DBG_disableParanoia = (X)
+
+#else
+
+#define PARAHEAD
+#define PARATAIL
+#define PARATYPE(NAME, TYPE, GETCHILD, CHILDTYPE, GETCHILDTYPE, NEXT, GETNEXT)
+#define PARAADD(X, Y) do {} while (0)
+#define PARAADDI(X, Y) do {} while (0)
+#define PARADEL(X, Y) do {} while (0)
+#define PARACHECK() do {} while (0)
+#define PARAEXTERN(NAME, TYPE)
+#define DBG_raisePPL() 0
+#define DBG_restorePPL(X) (void)(X);
+
+#endif
+
+struct KRN_task_tag;
+struct KRN_trace_tag;
+struct KRN_ctx_tag;
+
+#if UINTPTR_MAX == UINT32_MAX
+#define _DBG_TOP_BIT 0x80000000
+#else
+#define _DBG_TOP_BIT 0x8000000000000000
+#endif
+		</prologue>
+		<include lib="N">meos/target/dbg.h</include>
+		<include lib="N">meos/debug/paranoia.h</include>
+		<typedef vis="anonymous"><c>int32_t DBG_PPL_T</c>Paranoia protection
+		level type. The contents of this type should be considered opaque by
+		user code.</typedef>
+		<func name="DBG_assert" vis="virtual">
+			<arg type="int" name="condition">Boolean condition.
+			</arg>
+			<arg type="char *" name="format">Format string.</arg>
+			<varargs>Format string arguments.</varargs>
+			<return type="void"/>
+			<description>If <code>condition</code> is zero then
+			formats and logs <code>format</code> and subsequent
+			arguments, asserts, and stops. This will be compiled
+			out and <code>condition</code> will not be evaluated in
+			a debug build.</description>
+		</func>
+		<func name="DBG_backtraceCtx" vis="private">
+			<arg type="struct KRN_ctx_tag *" name="ctx">Context to backtrace.</arg>
+			<return type="void"/>
+			<description>Dump a backtrace of the specified context to the trace
+			facility, as per system configuration.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_badPtr" vis="virpriv">
+			<arg type="uintptr_t" name="address">Address to check.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (Bad)">Accessing the pointer may cause an exception.</item>
+					<item val="0 (Good)">Accessing the pointer should not cause an exception.</item>
+				</enum>
+			</return>
+			<description>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities. On most intended targets, it
+			will be hard wired to 0.</description>
+		</func>
+		<func name="DBG_goodPtr" vis="virpriv">
+			<arg type="uintptr_t" name="address">Address to check.</arg>
+			<return type="void"/>
+			<description>Mark that <code>address</code> may be safely accessed.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities. On most intended targets, it
+			will be hard wired to a non-op.</description>
+		</func>
+			<func name="DBG_info" vis="virtual">
+			<arg type="char *" name="format">Format string.</arg>
+			<varargs>Format string arguments.</varargs>
+			<return type="void"/>
+			<description>Formats and logs <code>format</code> and
+			subsequent arguments to report information. This will
+			be compiled out in a debug build.</description>
+		</func>
+		<func name="DBG_insist" vis="virtual">
+			<arg type="int" name="condition">Boolean condition.
+			</arg>
+			<arg type="char *" name="format">Format string.</arg>
+			<varargs>Format string arguments.</varargs>
+			<return type="void"/>
+			<description>If <code>condition</code> is zero then
+			formats and logs <code>format</code> and subsequent
+			arguments to report a warning. This will be compiled
+			out and <code>condition</code> will not be evaluated in
+			a debug build.</description>
+		</func>
+		<func name="DBG_logF" vis="virtual">
+			<arg type="char *" name="format">Format string.</arg>
+			<varargs>Format string arguments.</varargs>
+			<return type="void"/>
+			<description>Formats and logs <code>format</code> and
+			subsequent arguments. This will	be compiled out in a debug build.
+			<par/>
+			This uses the same syntax as <code>printf</code>. It
+			additionally ensures that output is atomic, preventing output
+			corruption.
+			<par/>
+			Depending on the output mechanism used by your implementation, this
+			may be a relatively slow operation, and effect the timing properties
+			of your system. <code>DBG_logT</code> will often be quicker, but has
+			different trade-offs.</description>
+		</func>
+		<func name="DBG_logT" vis="virtual">
+			<arg type="const char *" name="format">Format string.</arg>
+			<varargs>Format string arguments.</varargs>
+			<return type="void"/>
+			<description>Formats and logs <code>format</code> and
+			subsequent arguments to the trace buffer. This will	be compiled out
+			in a debug build.
+			<par/>
+			This uses the same syntax as <code>printf</code>. No output will
+			be displayed, instead the trace log will need dumping or inspecting
+			in a debugger. <code>DBG_logT</code> must be enabled in the MEOS
+			configuration.
+			<par/>
+			The trace buffer will be rapidly consumed by this function. The
+			first 8 characters will consume one event, and each subsequent 12
+			characters will consume another event. <code>DBG_logF</code> will
+			use less trace buffer, but has other trade offs.</description>
+		</func>
+		<func name="DBG_putT" vis="virtual">
+			<arg type="const char *" name="message">String.</arg>
+			<return type="void"/>
+			<description>Logs <code>message</code> to the trace buffer. This
+			will be compiled out in a debug build.
+			<par/>
+			No output will be displayed, instead the trace log will need dumping
+			or inspecting in a debugger. <code>DBG_logT</code> must be enabled
+			in the MEOS configuration.
+			<par/>
+			The trace buffer will be rapidly consumed by this function. The
+			first 8 characters will consume one event, and each subsequent 12
+			characters will consume another event. <code>DBG_logF</code> will
+			use less trace buffer, but has other trade offs.</description>
+		</func>
+		<func name="DBG_paranoiaAllowed" vis="virpriv">
+			<voidargs/>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero">Paranoia system is allowed to operate.</item>
+					<item val="0">Paranoia checking should be suspended.</item>
+				</enum>
+			</return>
+			<description>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities. On most intended targets, it
+			will be hard wired to 1.</description>
+		</func>
+        <typedef><c>enum {<nl/>
+        		<tab/>DBG_TRACE_ENTER_ISR = 0,<nl/>
+        		<tab/>DBG_TRACE_EXIT_ISR = _DBG_TOP_BIT,<nl/>
+        		<tab/>DBG_TRACE_SCHED_ISR,<nl/>
+        		<tab/>DBG_TRACE_HOTWIRE_ISR,<nl/>
+        		<tab/>DBG_TRACE_CONTINUATION1,<nl/>
+        		<tab/>DBG_TRACE_CONTINUATION2,<nl/>
+        		<tab/>DBG_TRACE_CONTINUATION3,<nl/>
+        		<tab/>DBG_TRACE_CTX_SW,<nl/>
+        		<tab/>DBG_TRACE_CTX_BT,<nl/>
+        		<tab/>DBG_TRACE_RAISE,<nl/>
+        		<tab/>DBG_TRACE_LOWER,<nl/>
+        		<tab/>DBG_TRACE_EXTRA1,<nl/>
+        		<tab/>DBG_TRACE_EXTRA2,<nl/>
+        		<tab/>DBG_TRACE_EXTRA3,<nl/>
+        		<tab/>DBG_TRACE_CHAIN_UHI,<nl/>
+        		<tab/>DBG_TRACE_LOG,<nl/>
+        } DBG_TRACEEVENT_T</c>Event types for non-API events.
+        </typedef>
+		<func name="DBG_RTT" vis="virpriv">
+			<arg type="DBG_TRACEEVENT_T" name="event">Event to trace.</arg>
+			<return type="void"/>
+			<description>Record <code>event</code> in the implementation
+			specific real time trace.</description>
+		</func>
+		<func name="DBG_RTTValue" vis="virpriv">
+			<arg type="uint32_t" name="value">Value to trace.</arg>
+			<return type="void"/>
+			<description>Record <code>value</code> in the implementation
+			specific real time trace.</description>
+		</func>
+		<func name="DBG_RTTPair" vis="virpriv">
+			<arg type="DBG_TRACEEVENT_T" name="event">Event to trace.</arg>
+			<arg type="uint32_t" name="value">Value to trace.</arg>
+			<return type="void"/>
+			<description>Record <code>event</code> and <code>value</code> in the
+			implementation specific real time trace.</description>
+		</func>
+		<func name="DBG_ctxSw" vis="virpriv">
+			<arg type="KRN_REASON_T" name="reason">Reason for switch.</arg>arg>
+			<arg type="struct KRN_task_tag *" name="from">Task being switched from.</arg>
+			<arg type="struct KRN_task_tag *" name="to">Task being switched to - <code>
+				NULL</code> if sleeping.</arg>
+			<return type="void"/>
+			<description>Record a context switch. Only for internal use by
+				scheduler.</description>
+		</func>
+		<func name="DBG_raise" vis="virpriv">
+			<arg type="IRQ_IPL_T" name="before">IPL level being raised from.</arg>
+			<return type="void"/>
+			<description>Record an IPL raise. Only for internal use by
+				kernel.</description>
+		</func>
+		<func name="DBG_lower" vis="virpriv">
+			<arg type="IRQ_IPL_T" name="before">IPL level being lowered from.</arg>
+			<arg type="IRQ_IPL_T" name="after">IPL level being lowered to.</arg>
+			<return type="void"/>
+			<description>Record an IPL restore. Only for internal use by
+				kernel.</description>
+		</func>
+		<func name="DBG_interruptIn" vis="virpriv">
+			<arg type="int" name="i">Hardware interrupt number.</arg>
+			<return type="void"/>
+			<description>Record ISR entry prompted by interrupt <code>i</code>.
+				Only for use by CTX/IRQ implementation.</description>
+		</func>
+		<func name="DBG_interruptSched" vis="virpriv">
+			<voidargs/>
+			<return type="void"/>
+			<description>Record schedule entry after ISR return from interrupt.
+				Only for use by CTX/IRQ implementation.</description>
+		</func>
+		<func name="DBG_interruptOut" vis="virpriv">
+			<arg type="int" name="i">Hardware interrupt number.</arg>
+			<return type="void"/>
+			<description>Record ISR return from interrupt <code>i</code>.
+				Only for use by CTX/IRQ implementation.</description>
+		</func>
+		<func name="DBG_hotwire" vis="virpriv" >
+			<arg type="struct KRN_ctx_tag *" name="ctx">Context being activated.</arg>
+			<return type="void"/>
+			<description>Record context activation to context described at <code>
+				ctx</code>. Only for use by CTX/IRQ implementation.</description>
+		</func>
+		<func name="DBG_troffObject" vis="virtual">
+			<arg type="void *" name="object">Object to not trace.</arg>
+			<return type="void"/>
+			<description>Stop tracing <code>object</code>.</description>
+		</func>
+		<func name="DBG_tronObject" vis="virtual">
+			<arg type="void *" name="object">Object to trace.</arg>
+			<return type="void"/>
+			<description>Start tracing <code>object</code>.</description>
+		</func>
+		<func name="DBG_walk" vis="private">
+			<arg type="uint32_t" name="depth">Number of call records to step out
+				through.</arg>
+			<arg type="uintptr_t *" name="pc">Call site out-parameter.</arg>
+			<arg type="uintptr_t *" name="sp">Stack pointer out-parameter.</arg>
+			<return type="int32_t"/>
+			<description>Walk up the call-stack <code>depth</code> records, and
+			return the call site PC and stack pointer via <code>pc</code> and
+			<code>sp</code>.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_paranoidSweep" vis="virpriv">
+			<arg type="uintptr_t" name="start">Start address.</arg>
+			<arg type="uintptr_t" name="end">End address.</arg>
+			<return type="void"/>
+			<description>Remove any paranoia metadata referring to objects
+			between <code>start</code> and <code>end</code>.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_openTrace" vis="private">
+			<arg type="uint32_t" name="n">Number of events to record.</arg>
+			<return type="struct KRN_trace_tag *"/>
+			<description>Atomically modulo increment the internal event trace pointer by
+			<code>n</code>, returning a pointer to the first event.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_stepTrace" vis="virpriv">
+			<arg type="struct KRN_trace_tag **" name="wpp">Pointer to the write pointer to increment.</arg>
+			<arg type="uint32_t" name="n">Number of events to step.</arg>
+			<return type="struct KRN_trace_tag *"/>
+			<description>Modulo increment <code>wpp</code> by <code>n</code> events.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_extra" vis="virpriv">
+			<voidargs/>
+			<return type="uintptr_t"/>
+			<description>Return the platform specific datum to be stored in a
+			<code>DBG_TRACE_EXTRA</code> event.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_PC" vis="virpriv">
+			<arg type="struct KRN_task_tag *" name="task">Task from which to get the PC.</arg>
+			<return type="uintptr_t"/>
+			<description>Return the PC from the context saved in
+			<code>task</code>.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_walkExtra" vis="private">
+			<arg type="struct KRN_trace_tag **" name="wpp">Pointer to the write pointer to use and increment.</arg>
+			<arg type="uint32_t" name="depth">Number of stack contexts to walk up to find call site.</arg>
+			<return type="void"/>
+			<description>Walk up the stack <code>depth</code> records, extract
+			the call site, collect the platform specific datum, and emit a
+			<code>DBG_TRACE_EXTRA</code> event at <code>wpp</code>.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_enter" vis="private">
+			<arg type="struct KRN_trace_tag **" name="wpp">Pointer to the write pointer to use and increment.</arg>
+			<arg type="void *" name="func">Function being entered.</arg>
+			<arg type="uint32_t" name="n">Number of arguments to record.</arg>
+			<varargs>Arguments to record.</varargs>
+			<return type="void"/>
+			<description>Record entry to <code>func</code> at <code>wpp</code>.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_exit" vis="private">
+			<arg type="struct KRN_trace_tag **" name="wpp">Pointer to the write pointer to use and increment.</arg>
+			<arg type="void *" name="func">Function being exited.</arg>
+			<arg type="uint32_t" name="n">Number of return values to record.</arg>
+			<varargs>Return values to record.</varargs>
+			<return type="void"/>
+			<description>Record return from <code>func</code> at <code>wpp</code>.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_trace" vis="private">
+			<arg type="struct KRN_trace_tag **" name="wpp">Pointer to the write pointer to use and increment.</arg>
+			<arg name="event" type="uintptr_t">Event type.</arg>
+			<arg name="args" type="uint32_t">Number of arguments to follow.</arg>
+			<varargs/>
+			<return type="void"/>
+			<description>Emit software trace data.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_traceObjects" vis="virpriv">
+			<arg type="void *" name="object">Pointers to the objects to conditionally trace.</arg>
+			<varargs/>
+			<return type="int32_t"/>
+			<description>Return true if any of the arguments have been marked with <code>DBG_tronObject</code>.
+			<par/>
+			This function should not be used by user code, and is reserved for
+			the implementation of debug facilities.</description>
+		</func>
+		<func name="DBG_raisePPL" vis="virpriv">
+		<voidargs/>
+		<return type="DBG_PPL_T">Previous PPL.</return>
+		<description>
+			Raises PPL (disables paranoia) in the caller's execution context.
+    		<par/>
+    		The PPL should be managed in a strictly nested fashion.
+            <par/>
+        	It is safe to call this function in ISRs.
+        </description>
+		</func>
+		<func name="DBG_restorePPL" vis="virpriv" quals="">
+			<arg type="DBG_PPL_T" name="newPPL">New PPL value.</arg>
+			<return type="void"/>
+			<description>
+				Lowers the PPL (enable paranoia) of the caller's execution
+				context.
+				<par/>
+                The PPL should be managed in a strictly nested fashion.
+                <par/>
+                It is safe (although unnecessary) to call this function
+                in ISRs. This makes it possible to write functions which
+                can execute in both interrupt and background context.
+			</description>
+		</func>
+		<epilogue>
+#ifndef CONFIG_DEBUG_TRACE_HARD
+#define DBG_RTT(E)
+#define DBG_RTTValue(V)
+#define DBG_RTTPair(E, V)
+#endif
+
+#ifdef CONFIG_DEBUG_TRACE_EXTRA
+#define DBG_wrapEnter(E, I, ...) do {struct KRN_trace_tag *wp = DBG_openTrace(((I) / 3) + 2); DBG_enter(&amp;wp, (E), (I), __VA_ARGS__); DBG_walkExtra(&amp;wp, 1);} while (0)
+#define DBG_wrapExit(E, I, ...) do {struct KRN_trace_tag *wp = DBG_openTrace(((I) / 3) + 2); DBG_exit(&amp;wp, (E), (I), __VA_ARGS__); DBG_walkExtra(&amp;wp, 0);} while (0)
+#else
+#define DBG_wrapEnter(E, I, ...) do {struct KRN_trace_tag *wp = DBG_openTrace(((I) / 3) + 1); DBG_enter(&amp;wp, (E), (I), __VA_ARGS__);} while (0)
+#define DBG_wrapExit(E, I, ...) do {struct KRN_trace_tag *wp = DBG_openTrace(((I) / 3) + 1); DBG_exit(&amp;wp, (E), (I), __VA_ARGS__); } while (0)
+#endif
+
+#if (defined(CONFIG_DEBUG_TRACE_IPL) &amp;&amp; defined(CONFIG_DEBUG_TRACE_IPL_SOFT) &amp;&amp; defined(CONFIG_DEBUG_TRACE_IPL_HARD))
+
+	#ifdef CONFIG_DEBUG_TRACE_EXTRA
+		#define DBG_raise(FROM) do {DBG_RTTPair(DBG_TRACE_RAISE, (FROM)); struct KRN_trace_tag *wp = DBG_openTrace(2); DBG_trace(&amp;wp, DBG_TRACE_RAISE, 1, (FROM)); DBG_walkExtra(&amp;wp, 0);} while (0)
+		#define DBG_lower(FROM, TO) do {DBG_RTTPair(DBG_TRACE_LOWER, (FROM)); DBG_RTTValue((TO)); struct KRN_trace_tag *wp = DBG_openTrace(2); DBG_trace(&amp;wp, DBG_TRACE_LOWER, 2, (FROM), (TO)); DBG_walkExtra(&amp;wp, 0);} while (0)
+	#else
+		#define DBG_raise(FROM) do {DBG_RTTPair(DBG_TRACE_RAISE, (FROM)); struct KRN_trace_tag *wp = DBG_openTrace(1); DBG_trace(&amp;wp, DBG_TRACE_RAISE, 1, (FROM));} while (0)
+		#define DBG_lower(FROM, TO) do {DBG_RTTPair(DBG_TRACE_LOWER, (FROM)); DBG_RTTValue((TO)); struct KRN_trace_tag *wp = DBG_openTrace(1); DBG_trace(&amp;wp, DBG_TRACE_LOWER, 2, (FROM), (TO));} while (0)
+	#endif
+
+#elif (defined(CONFIG_DEBUG_TRACE_IPL) &amp;&amp; defined(CONFIG_DEBUG_TRACE_IPL_SOFT))
+
+	#ifdef CONFIG_DEBUG_TRACE_EXTRA
+		#define DBG_raise(FROM) do {struct KRN_trace_tag *wp = DBG_openTrace(2); DBG_trace(&amp;wp, DBG_TRACE_RAISE, 1, (FROM)); DBG_walkExtra(&amp;wp, 0);} while (0)
+		#define DBG_lower(FROM, TO) do {struct KRN_trace_tag *wp = DBG_openTrace(2); DBG_trace(&amp;wp, DBG_TRACE_LOWER, 2, (FROM), (TO)); DBG_walkExtra(&amp;wp, 0);} while (0)
+	#else
+		#define DBG_raise(FROM) do {struct KRN_trace_tag *wp = DBG_openTrace(1); DBG_trace(&amp;wp, DBG_TRACE_RAISE, 1, (FROM));} while (0)
+		#define DBG_lower(FROM, TO) do {struct KRN_trace_tag *wp = DBG_openTrace(1); DBG_trace(&amp;wp, DBG_TRACE_LOWER, 2, (FROM), (TO)); } while (0)
+	#endif
+
+#elif (defined(CONFIG_DEBUG_TRACE_IPL) &amp;&amp; defined(CONFIG_DEBUG_TRACE_IPL_HARD))
+
+	#define DBG_raise(FROM) DBG_RTTPair(DBG_TRACE_RAISE, (FROM))
+	#define DBG_lower(FROM, TO) do {DBG_RTTPair(DBG_TRACE_LOWER, (FROM)); DBG_RTTValue((TO));} while (0)
+
+#else
+
+	#define DBG_raise(FROM)
+	#define DBG_lower(FROM, TO)
+
+#endif
+
+#if !(defined(CONFIG_DEBUG_TRACE_LOG_SOFT) || defined(CONFIG_DEBUG_TRACE_LOG_HARD))
+#define DBG_logT(...)
+#define DBG_putT(MESSAGE)
+#endif
+
+#ifdef CONFIG_DEBUG_PER_OBJECT_TRACE
+int32_t DBG_traceObjects(void *object);
+#define DBG_PER_OBJECT_POOL(X) \
+uint8_t *_DBG_perObjBuf[(X)]; \
+void _DBG_perObjPoolConstructor (void) __attribute__((constructor,no_instrument_function)); \
+void _DBG_perObjPoolConstructor (void) \
+{ \
+	extern void _DBG_perObjInit(void *buf, size_t size); \
+	_DBG_perObjInit(_DBG_perObjBuf, (X)); \
+}
+#else
+#define DBG_PER_OBJECT_POOL(X)
+#endif
+
+/* These provide an undocumented mechanism for testing the DBG module. */
+#ifndef MEOS_NO_FUNCS
+int32_t _DBG_info(const char *file, const int line, const char *message, ...);
+int32_t _DBG_insist(const char *file, const int line, const char *message, ...);
+int32_t _DBG_assert(const char *file, const int line, const char *message, ...);
+#endif
+
+#ifndef CONFIG_DEBUG_DIAGNOSTICS
+#define DBG_info(...)
+#define DBG_insist(e,...)
+#define DBG_assert(e,...)
+#else
+
+/* Magic macros for manipulating varargs - these are delicate. */
+#define _DBG_CAR(...) _DBG_CAR_HELPER(__VA_ARGS__, throwaway)
+#define _DBG_CAR_HELPER(CAR, ...) CAR
+
+#define _DBG_CDR(...) _DBG_CDR_HELPER(_DBG_NUM(__VA_ARGS__), __VA_ARGS__)
+#define _DBG_CDR_HELPER(qty, ...) _DBG_CDR_HELPER2(qty, __VA_ARGS__)
+#define _DBG_CDR_HELPER2(qty, ...) _DBG_CDR_HELPER_##qty(__VA_ARGS__)
+#define _DBG_CDR_HELPER_ONE(CAR)
+#define _DBG_CDR_HELPER_TWOORMORE(CAR, ...) , __VA_ARGS__
+#define _DBG_NUM(...) \
+	_DBG_SELECT_32ND(__VA_ARGS__, TWOORMORE, TWOORMORE, TWOORMORE, \
+	TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, \
+	TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, \
+	TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, \
+	TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, TWOORMORE, \
+	TWOORMORE, TWOORMORE, TWOORMORE, ONE, throwaway)
+#define _DBG_SELECT_32ND(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, \
+			a13, a14, a15, a16, a17, a18, a19, a20, a21, a22, a23, \
+			a24, a25, a26, a27, a28, a29, a30, a31, a32, ...) a32
+
+#define DBG_info(...) (_DBG_info(__FILE__, __LINE__, __VA_ARGS__) ? \
+(DBG_logF("* INFO(%s:%u): " _DBG_CAR(__VA_ARGS__) "\n", __FILE__, __LINE__ \
+_DBG_CDR(__VA_ARGS__))) : (void)0)
+#define DBG_insist(e, ...) ((e) ? (void)0 : (_DBG_insist(__FILE__, __LINE__, \
+__VA_ARGS__) ? (DBG_logF("! WARNING(%s:%u): " _DBG_CAR(__VA_ARGS__) "\n", \
+__FILE__, __LINE__ _DBG_CDR(__VA_ARGS__))) : (void)0))
+#define DBG_assert(e, ...) __extension__ ({ \
+	int32_t r = (e) ? 1 : 0; \
+	DBG_PPL_T ppl = DBG_raisePPL(); \
+	if (!r) { \
+		DBG_logF("? ERROR(%s:%u): " _DBG_CAR(__VA_ARGS__) "\n", \
+			__FILE__, __LINE__ _DBG_CDR(__VA_ARGS__)); \
+		if (_DBG_assert(__FILE__, __LINE__, __VA_ARGS__)) \
+	 		_DBG_stop(__FILE__, __LINE__); \
+	} \
+	DBG_restorePPL(ppl); \
+	0; \
+})
+#endif
+		</epilogue>
+	</interface>
+</module>

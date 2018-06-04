@@ -1,0 +1,103 @@
+config MVZ
+bool "MEOS-VZ hypervisor extensions"
+default n
+depends on ARCH_MIPS_VZ
+depends on FEATURE_VRINGS
+help
+	Turn MEOS into a hypervisor.
+
+config MVZ_TLB_REFILL
+bool "Dynamic TLB"
+default y
+depends on MVZ
+help
+	Allows the hosting of dynamic systems through the use of a TLB refill
+	handler. Disables MVZ_fixMapping and enables MVZ_addMapping.
+	Guest execution will potentially be slower.
+
+choice
+	prompt "Page size"
+	depends on MVZ_TLB_REFILL
+	default MVZ_4KB_PAGES
+	help
+		Selects the page size to be used with the TLB. Larger is faster,
+		but limits the alignment of the source memory and increases the
+		minimum usable size.
+
+	config MVZ_4KB_PAGES
+	bool "4KB"
+	help
+		Use 4KB pages.
+
+	config MVZ_16KB_PAGES
+	bool "16KB"
+	help
+		Use 16KB pages.
+
+	config MVZ_64KB_PAGES
+	bool "64KB"
+	help
+		Use 64KB pages.
+
+	config MVZ_256KB_PAGES
+	bool "256KB"
+	help
+		Use 256KB pages.
+
+	config MVZ_1MB_PAGES
+	bool "1MB"
+	help
+		Use 1MB pages.
+
+	config MVZ_4MB_PAGES
+	bool "4MB"
+	help
+		Use 4MB pages.
+
+	config MVZ_16MB_PAGES
+	bool "16MB"
+	help
+		Use 16MB pages.
+
+	config MVZ_64MB_PAGES
+	bool "64MB"
+	help
+		Use 64MB pages.
+
+	config MVZ_256MB_PAGES
+	bool "256MB"
+	help
+		Use 256MB pages.
+
+endchoice
+
+config MVZ_CLEAN_NET
+bool "Filter network packets by MAC"
+default n
+depends on MVZ
+depends on LWIP
+help
+	By default, incoming network packets will be forwarded to all guests
+	sharing an interface. This setting provides privacy by only forwarding
+	incoming packets that are addressed to the MAC declared by the guest.
+	It should be noted that this is only as secure as your network fabric,
+	which in most cases will easily be snooped with a computer running
+	Wireshark.
+
+config MVZ_BROKEN_TIMERS
+bool "Emulate guest timers"
+default n
+depends on MVZ
+help
+	Some implementations of VZ do not connect the guest CP0 count/compare
+	timer signal to the guest interrupt system, meaning there will be no
+	virtual timer interrupts. This emulates expected guest timer operation
+	through interrupt synthesis.
+
+config MVZ_ACK_VIA_CAUSE
+bool "Guest interrupt acknowledgement via cause"
+default n
+depends on MVZ
+help
+	Allows a guest to set and clear the IPn bits. This provides an easy way
+	for a guest to deassert an interrupt, without emulating hardware.

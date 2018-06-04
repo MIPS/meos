@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="mem" prefix="MEM" modtype="Functional">
+	<description>Provides an abstraction of the underlying virtual memory
+	mechanism.</description>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="Y">string.h</include>
+		<include lib="N">meos/target/mem.h</include>
+		<typedef><c>enum {<nl/>
+			<tab/>MEM_P2V_CACHED=0,<nl/>
+			<tab/>MEM_P2V_UNCACHED=1<nl/>
+		} MEM_P2V_VIEW_T</c>Control options for <code>MEM_p2v</code>.
+		</typedef>
+		<typedef><c>void (MEM_REVMAPFUNC_T)(uintptr_t paddr, size_t length,
+				 void *vaddr, void *cbPar)</c>Reverse mapping callback. Called when a mapping has been found. <code>paddr</code> specified the physical start address, <code>length</code> specifies the length of the mapping in bytes, and <code>vaddr</code> specifies the virtual start address. <code>cbPar</code> is passed through from the user of <code>MEM_revmap</code>.</typedef>
+		<func name="MEM_map">
+			<arg type="uintptr_t" name="paddr">Physical address to map from.
+			</arg>
+			<arg type="size_t" name="length">Number of bytes to map.</arg>
+			<arg type="void *" name="vaddr">Virtual address to map to.</arg>
+			<return type="int32_t">Non-zero on success.</return>
+			<description>Map physical memory into virtual address space. If
+			provided with bad parameters, this function may assert or warn in a
+			debug build, but will leave the system in an unstable state in all
+			configurations.</description>
+		</func>
+		<func name="MEM_p2v">
+			<arg type="uintptr_t" name="paddr">Physical address to translate.
+			</arg>
+			<arg type="MEM_P2V_VIEW_T" name="view">Hint to guide mapping when multiple possible maps exist.
+			</arg>
+			<return type="void *">Virtual address.</return>
+			<description>Translate a physical address to a virtual address. Will
+			assert upon failure in a debug build, returning NULL otherwise.
+			<code>view</code> hints which mapping should be used if multiple
+			mappings exist. For example, one could use <code>MEM_P2V_CACHED</code>
+			for accessing the memory of other coherent processors, or use
+			<code>MEM_P2V_UNCACHED</code> for accessing hardware registers.
+		</description>
+		</func>
+		<func name="MEM_revmap">
+			<arg type="void *" name="vaddr">Virtual address to scan from.
+			</arg>
+			<arg type="size_t" name="length">Number of bytes to reverse map.</arg>
+			<arg type="MEM_REVMAPFUNC_T" name="cb">Callback function to emit
+				mappings to.</arg>
+			<arg type="void *" name="cbPar">User data to pass to callback function.</arg>
+			<return type="int32_t">Non-zero on success.</return>
+			<description>Scan the memory  specified by <code>vaddr</code> and
+			<code>length</code> to discover the mappings which specify it, and
+			emit them via <code>cb</code>. <code>par</code> will be passed to
+			<code>cb</code> to provide access to user data.
+				</description>
+		</func>
+		<func name="MEM_v2p">
+			<arg type="void *" name="vaddr">Virtual address to translate.</arg>
+			<return type="uintptr_t">Physical address.</return>
+			<description>Translate a virtual address to a physical address.
+			Will assert upon failure in a debug build, silently fail otherwise.
+			</description>
+		</func>
+
+		<func name="MEM_rb" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint8_t">Value at address.</return>
+			<description>Read an unaligned byte from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_rh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint16_t">Value at address.</return>
+			<description>Read an aligned 16 bit native endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_rw" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint8_t">Value at address.</return>
+			<description>Read an aligned 32 bit native endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_urh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint16_t">Value at address.</return>
+			<description>Read an unaligned 16 bit native endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_urw" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint8_t">Value at address.</return>
+			<description>Read an unaligned 32 bit native endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_wb" vis="virtual">
+			<arg type="void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint8_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an unaligned byte to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_wh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint16_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an aligned 16 bit native endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_ww" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint32_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an aligned 32 bit native endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_uwh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint16_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an unaligned 16 bit native endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_uww" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint32_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an unaligned 32 bit native endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_berh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint16_t">Value at address.</return>
+			<description>Read an aligned 16 bit big endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_berw" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint8_t">Value at address.</return>
+			<description>Read an aligned 32 bit big endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_beurh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint16_t">Value at address.</return>
+			<description>Read an unaligned 16 bit big endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_beurw" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint8_t">Value at address.</return>
+			<description>Read an unaligned 32 bit big endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_bewh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint16_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an aligned 16 bit big endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_beww" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint32_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an aligned 32 bit big endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_beuwh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint16_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an unaligned 16 bit big endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_beuww" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint32_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an unaligned 32 bit big endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_lerh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint16_t">Value at address.</return>
+			<description>Read an aligned 16 bit little endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_lerw" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint8_t">Value at address.</return>
+			<description>Read an aligned 32 bit little endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_leurh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint16_t">Value at address.</return>
+			<description>Read an unaligned 16 bit little endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_leurw" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to read.</arg>
+			<return type="uint8_t">Value at address.</return>
+			<description>Read an unaligned 32 bit little endian value from <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_lewh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint16_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an aligned 16 bit little endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_leww" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint32_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an aligned 32 bit little endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_leuwh" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint16_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an unaligned 16 bit little endian value to <code>vaddr</code>.</description>
+		</func>
+		<func name="MEM_leuww" vis="virtual">
+			<arg type="const void *" name="vaddr">Virtual address to write.</arg>
+			<arg type="uint32_t" name="value">Value to write.</arg>
+			<return type="void"/>
+			<description>Write an unaligned 32 bit little endian value to <code>vaddr</code>.</description>
+		</func>
+	</interface>
+</module>

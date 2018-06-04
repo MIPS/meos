@@ -1,0 +1,23 @@
+config BOARD_HAS_RAM_DISK
+bool
+default n
+
+choice BSP
+	prompt "Board Support Package"
+	default BSP_NONE
+	help
+		Selects a board support package.
+
+	source "$WORK_DIR/boards/none/Kconfig-choice"
+	source "$WORK_DIR/boards/custom/Kconfig-choice"
+	source "$WORK_DIR/boards/mvz/Kconfig-choice"
+	source "$WORK_DIR/boards/mti-malta/Kconfig-choice"
+	source "$WORK_DIR/boards/mti-sead3/Kconfig-choice"
+	source "$WORK_DIR/boards/xlnx-nexys4ddr/Kconfig-choice"
+	source "$WORK_DIR/boards/chipkit-wifire/Kconfig-choice"
+	source "$WORK_DIR/boards/pic32-starterkit/Kconfig-choice"
+	source "$WORK_DIR/boards/rpusim/Kconfig-choice"
+
+endchoice
+
+source "$WORK_DIR/boards/custom/Kconfig"

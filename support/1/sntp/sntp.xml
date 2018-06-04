@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="sntp" prefix="SNTP" modtype="Special">
+	<description>Simple Network Time Protocol client.</description>
+	<imports>kernel</imports>
+	<imports>lwip</imports>
+	<interface>
+		<include lib="Y">stdint.h</include>
+		<include lib="Y">time.h</include>
+		<func name="SNTP_getDetailedTime">
+			<arg type="char *" name="host">IP address of NTP server. Does not support DNS lookup. NULL uses a default server.</arg>
+			<arg type="uint64_t *" name="time">Out parameter in which fetched time will be stored.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="0">Success.</item>
+					<item val="-EADDRNOTAVAIL">Host to address translation failed.</item>
+					<item val="-ENOBUFS">No sockets available.</item>
+					<item val="-ENOMSG">Invalid server response.</item>
+					<item val="-ETIMEDOUT">No server response.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(time != NULL)</precondition>
+			</limitations>
+			<description>Fetch the current time in 64-bit fixed point NTP timestamp format from an NTP server.
+			</description>
+		</func>
+		<func name="SNTP_getTime">
+			<arg type="char *" name="host">IP address of NTP server. Does not support DNS lookup. NULL uses a default server.</arg>
+			<arg type="time_t *" name="time">Out parameter in which fetched time will be stored.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="0">Success.</item>
+					<item val="-EADDRNOTAVAIL">Host to address translation failed.</item>
+					<item val="-ENOBUFS">No sockets available.</item>
+					<item val="-ENOMSG">Invalid server response.</item>
+					<item val="-ETIMEDOUT">No server response.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(time != NULL)</precondition>
+			</limitations>
+			<description>Fetch the current time from an NTP server.
+			</description>
+		</func>
+	</interface>
+</module>

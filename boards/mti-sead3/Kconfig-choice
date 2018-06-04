@@ -1,0 +1,12 @@
+config BSP_MTI_SEAD3
+bool "SEAD-3 (no GIC)"
+select BOARD_HAS_RAM_DISK
+help
+	Target a SEAD-3 system without a GIC.
+
+config BSP_MTI_SEAD3_GIC
+bool "SEAD-3 (with GIC)"
+select BOARD_HAS_RAM_DISK
+select ARCH_MIPS_GIC
+help
+	Target a SEAD-3 system with a GIC.

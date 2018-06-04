@@ -1,0 +1,12 @@
+menuconfig LOPRI
+bool "Low priority work queue"
+
+config LOPRI_STACKSIZE
+int "Worker stack size"
+depends on LOPRI
+default 4096
+
+config LOPRI_JOBS
+int "Number of job slots"
+depends on LOPRI
+default 16

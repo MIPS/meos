@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="dqueues" prefix="DQ" modtype="Functional">
+	<description>Provides general purpose functions for manipulating
+	doubly-linked queues of	objects.
+	<par/>All queued objects must have a <code>DQ_LINK</code> macro entry as
+	their <emph>first</emph> field.
+	<par/>
+	All queues (<code>DQ_T</code>) <emph>must</emph> be initialised before
+	use.
+	<par/>
+	If <code>DQ_INLINE</code> is defined, then this module can be in-lined
+	rather than separately linked.</description>
+	<imports>debug</imports>
+	<interface>
+		<prologue>
+#ifdef DQ_INLINE
+#define DQ_FQUALS inline static
+#else
+#ifdef DQ_FQUALS
+#undef DQ_FQUALS
+#endif
+#define DQ_FQUALS
+#endif
+		</prologue>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/debug/dbg.h</include>
+		<define><c>DQ_LINK DQ_LINKAGE_T DQ_link</c>Macro for declaring
+		linkage fields in queue-able objects. For example to declare a
+		queue-able object:
+			<code><nl/>struct {<nl/><tab/>DQ_LINK;<nl/><tab/>...
+			<nl/>} object;</code>
+		</define>
+		<typedef vis="private"><c>struct DQ_tag { <nl/>
+				<parahead/>
+				<tab/>struct DQ_tag *fwd;<nl/>
+				<tab/>struct DQ_tag *back;<nl/>
+				<paratail/>
+			}DQ_LINKAGE_T</c>
+		Private data type used by <code>DQ_LINK</code> macro.
+		</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+				<tab/>DQ_LINK;<nl/>
+			}DQ_T</c>
+		Queue type.
+		</typedef>
+		<func name="DQ_addAfter" quals="DQ_FQUALS">
+			<arg type="void *" name="predecessor" traceable="Y">Pointer to
+			predecessor.</arg>
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((predecessor != NULL) &amp;&amp; (item != NULL))</precondition>
+			</limitations>
+			<description>Adds a new <code>item</code> to a queue,
+			immediately behind the <code>predecessor</code>, which
+			must be already in the queue.</description>
+		</func>
+		<func name="DQ_addBefore" quals="DQ_FQUALS">
+			<arg type="void *" name="successor" traceable="Y">Pointer to successor
+			in queue.</arg>
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((successor != NULL) &amp;&amp; (item != NULL))</precondition>
+			</limitations>
+			<description>Adds a new <code>item</code> to a queue,
+			immediately ahead of the <code>successor</code> which
+			must be already in the queue.</description>
+		</func>
+		<func name="DQ_addHead" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue.</arg>
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((queue != NULL) &amp;&amp; (item != NULL))</precondition>
+			</limitations>
+			<description>Adds an item to the head of a queue.
+			</description>
+		</func>
+		<func name="DQ_addTail" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue.</arg>
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((queue != NULL) &amp;&amp; (item != NULL))</precondition>
+			</limitations>
+			<description>Adds an item to the tail of a queue.
+			</description>
+		</func>
+		<func name="DQ_empty" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Queue is
+					empty.</item>
+					<item val="0 (FALSE)">Queue is not
+					empty.</item>
+				</enum>
+			</return>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Tests for empty queue.</description>
+		</func>
+		<func name="DQ_first" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue.</arg>
+			<return type="void *">Pointer to the first item or
+			<code>NULL</code> if the queue is empty.</return>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Locates the first item in a queue <emph>without
+			removing it</emph>.</description>
+		</func>
+		<func name="DQ_init" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue header</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Initialise a queue.<par/> All queues
+			(<code>DQ_T</code>) <emph>must</emph> be initialised
+			before use.</description>
+		</func>
+		<func name="DQ_last" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue.</arg>
+			<return type="void *">Pointer to the last item or
+			<code>NULL</code> if the queue is empty.</return>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Locates the last item in a queue <emph>without
+			removing it</emph>.</description>
+		</func>
+		<func name="DQ_move" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="from" traceable="Y">Pointer to source queue.
+			</arg>
+			<arg type="DQ_T *" name="to" traceable="Y">Pointer to destination
+			queue.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((from != NULL) &amp;&amp; (to != NULL))</precondition>
+			</limitations>
+			<description>Moves all the items on the
+			<code>from</code> queue to the <code>to</code> queue.
+			<par/>
+			As a result, the <code>from</code> queue is always left
+			empty. If <code>from</code> is initially empty then
+			<code>to</code> will be set to empty. The initial contents
+			of the destination <code>to</code> queue object are
+			over-written.</description>
+		</func>
+		<func name="DQ_next" quals="DQ_FQUALS">
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void *">Pointer to the next item.</return>
+			<limitations>
+			<precondition>(item != NULL)</precondition>
+			</limitations>
+			<description>Locates the next item in a queue <emph>without
+			removing it</emph>. If the specified item is the last in
+			its queue, the return value will be the queue header
+			address.</description>
+		</func>
+		<func name="DQ_previous" quals="DQ_FQUALS">
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void *">Pointer to the previous item or
+			<code>NULL</code> if no predecessor.</return>
+			<limitations>
+			<precondition>(item != NULL)</precondition>
+			</limitations>
+			<description>Locates the previous item in a queue
+			<emph>without removing it</emph>. If the specified item
+			is the first in its queue, the return value will be the
+			queue header address.</description>
+		</func>
+		<func name="DQ_remove" quals="DQ_FQUALS">
+			<arg type="void *" name="item" traceable="Y">Pointer to queue.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(item != NULL)</precondition>
+			</limitations>
+			<description>Removes the item from whichever queue contains
+			it. <par/>Will give unpredictable results if the
+			specified item is not contained in a queue.
+			</description>
+		</func>
+		<func name="DQ_removeHead" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue.</arg>
+			<return type="void *">Pointer to the removed item, or
+			<code>NULL</code> if queue was empty.</return>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Removes the first item from a queue.
+			</description>
+		</func>
+		<func name="DQ_removeTail" quals="DQ_FQUALS">
+			<arg type="DQ_T *" name="queue" traceable="Y">Pointer to queue.</arg>
+			<return type="void *">Pointer to the removed item, or
+			<code>NULL</code> if queue was empty.</return>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Removes the last item from a queue.
+			</description>
+		</func>
+		<epilogue>
+#ifndef MEOS_NO_FUNCS
+#ifdef DQ_INLINE
+#define DQ_CINCLUDE
+#include "meos/dqueues/dq.c"
+#undef DQ_CINCLUDE
+#endif
+#endif
+		</epilogue>
+	</interface>
+</module>

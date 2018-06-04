@@ -1,0 +1,29 @@
+menu "MIPS Tests"
+depends on ARCH_MIPS
+depends on !BROKEN_PRINTF
+
+	config TEST_FPU_simple
+		bool "Simple FPU"
+		depends on ARCH_MIPS_HARD_FLOAT
+		default YES
+		help
+			Include a simple FPU test with two tasks, ensuring consistency of
+			floating point registers across context switches.
+
+	config TEST_mips_fpu_lazy
+		bool "MIPS FPU lazy context switch test"
+		depends on ARCH_MIPS_HARD_FLOAT
+		default YES
+		help
+			Include a more complex FPU test intended to verify the operation of
+			the lazy context save mechanism.
+
+	config TEST_syscall_decode
+		bool "MIPS syscall decoding test"
+		depends on ARCH_MIPS_MICRO
+		default YES
+		help
+			Test that syscalls are correctly decoded from the
+			microMIPS instruction stream.
+
+endmenu

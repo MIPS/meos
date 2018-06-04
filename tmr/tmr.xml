@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="tmr" prefix="TMR" modtype="Functional">
+	<description>Provides an abstraction of the underlying timer hardware.
+		<par/>
+		MEOS maintains a monotonically increasing jiffy clock which it
+		uses for timers. This is a 32-bit free running, wrapping value.
+		The length of a jiffy is implementation specific. This clock
+		should be as accurate as possible.
+	</description>
+	<imports>irq</imports>
+	<interface>
+		<prologue>
+		</prologue>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/irq/irq.h</include>
+		<define vis="virtual"><c>TMR_PERFCOUNTERS</c>The number of performance
+		counters available.</define>
+		<func name="TMR_configPerfCount" vis="virtual">
+			<arg name="counter">Counter index to retrieve.</arg>
+			<arg name="event">Event to configure.</arg>
+			<return type="void"/>
+			Sets the platform specific event the performance counter counts.
+			Please refer to your hardware documentation for a list of events.
+			<par/>
+			Beware that in some configurations, timers may be reset during
+			initialisation. Please refer to the platform specific documentation.
+			<par/>
+			Note that this performs a naive configuration of the performance
+			counter. For finer grained configuration, please use the appropriate
+			native mechanism for configuring performance counters.
+		</func>
+		<func name="TMR_getMonotonic" vis="virtual">
+			<voidargs/>
+			<return type="uint64_t"/>
+			<description>Returns the current count of the jiffy
+			clock.
+			</description>
+		</func>
+		<func name="TMR_getPerfCount" vis="virtual">
+			<arg name="counter">Counter index to retrieve.</arg>
+			<return type="uint64_t"/>
+			Fetches the platform specific performance counter.
+			<par/>
+			Beware that in some configurations, timers may be reset during
+			initialisation. Please refer to the platform specific documentation.
+		</func>
+		<func name="TMR_init">
+			<voidargs/>
+			<return type="void"/>
+			<description>Implementation specific initialisation
+			function. This <emph>must not</emph> be called by user
+			code. This should not initialise cycle counters,
+			<code>TMR_resetCycleCount</code> should perform this duty.
+			</description>
+		</func>
+		<func name="TMR_resetCycleCount">
+			<voidargs/>
+			<return type="void"/>
+			<description>Reset cycle counter.
+				<par/>Typically this should initialise and zero performance
+			counters to be used by <code>TMR_startCycleCount</code> and
+			<code>TMR_stopCycleCount</code>.</description>
+		</func>
+		<func name="TMR_resetPerfCount" vis="virtual">
+			<arg name="counter">Counter index to retrieve.</arg>
+			<return type="uint64_t"/>
+			Fetches and resets the platform specific performance counter.
+			<par/>
+			Beware that in some configurations, timers may be reset during
+			initialisation. Please refer to the platform specific documentation.
+		</func>
+		<func name="TMR_route" vis="private">
+			<arg type="IRQ_ISRFUNC_T" name="isrFunc">Pointer to the function which
+			will handle the timer.</arg>
+			<return type="void"/>
+			<description>Registers a low level timer interrupt
+			handler.
+			<par/>
+			This function is used by the kernel to implement timers.
+			End users <emph>must not</emph> use this functions. This
+			documentation is intended for implementors creating new
+			ports <emph>only</emph>.</description>
+		</func>
+		<func name="TMR_set" vis="private">
+			<arg type="uint32_t" name="abstime">Absolute monotonic time to trigger timer interrupt.</arg>
+			<return type="void"/>
+			<description>Triggers a timer interrupt when the jiffy timer
+			reaches <code>abstime</code>.
+			<par/>
+			This function is used by the kernel to implement timers.
+			End users <emph>must not</emph> use this function. This
+			documentation is intended for implementors creating new
+			ports <emph>only</emph>.</description>
+		</func>
+		<func name="TMR_setClockSpeed">
+				<arg type="uint32_t" name="perus">Jiffies per microsecond.</arg>
+				<return type="void"/>
+				<limitations>
+            <precondition>(perus != 0)</precondition>
+            </limitations>
+				<description>Set the number of jiffies per uSec.</description>
+		</func>
+		<func name="TMR_clockSpeed">
+				<return type="uint32_t">Jiffies per uSec.</return>
+				<description>Return the number of jiffies per uSec.</description>
+		</func>
+		<func name="TMR_startCycleCount" vis="virtual">
+			<voidargs/>
+			<return type="void"/>
+			<description>Start counting cycles.</description>
+		</func>
+		<func name="TMR_stopCycleCount" vis="virtual">
+			<voidargs/>
+			<return type="uint32_t">Number of cycles since previous call to <code>TMR_startCycleCount</code>.</return>
+			<limitations>
+            <postcondition>(_RESULT != 0)</postcondition>
+            </limitations>
+			<description>Stops counting cycles and returns the number of cycles since the last call to <code>TMR_startCycleCount</code>. MEOS will attempt to compensate for overheads.</description>
+		</func>
+		<postinclude lib="N">meos/target/tmr.h</postinclude>
+		<epilogue>
+		</epilogue>
+	</interface>
+</module>

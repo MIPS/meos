@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <xs:element name="module">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="description"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="imports"/>
+        <xs:element ref="interface"/>
+      </xs:sequence>
+      <xs:attribute name="modtype" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="Functional"/>
+            <xs:enumeration value="System"/>
+            <xs:enumeration value="Special"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="name" use="required"/>
+      <xs:attribute name="prefix" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="description">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="enum">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element maxOccurs="unbounded" ref="item"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="item">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+        <xs:element ref="nl"/>
+      </xs:choice>
+      <xs:attribute name="val" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="par">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="imports" type="xs:string"/>
+  <xs:element name="prologue" type="any"/>
+  <xs:element name="epilogue" type="any"/>
+  <xs:element name="interface">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" ref="prologue"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="include"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="define"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="typedef"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="var"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="func"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="postinclude"/>
+        <xs:element minOccurs="0" ref="epilogue"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="include">
+    <xs:complexType mixed="true">
+      <xs:attribute name="lib" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="Y"/>
+            <xs:enumeration value="N"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="postinclude">
+    <xs:complexType mixed="true">
+      <xs:attribute name="lib" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="Y"/>
+            <xs:enumeration value="N"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="define">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+        <xs:element ref="c"/>
+      </xs:choice>
+      <xs:attribute name="vis" default="concrete">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="concrete"/>
+            <xs:enumeration value="virtual"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="typedef">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+        <xs:element ref="c"/>
+      </xs:choice>
+      <xs:attribute name="vis">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="public"/>
+            <xs:enumeration value="private"/>
+            <xs:enumeration value="anonymous"/>
+            <xs:enumeration value="viranon"/>
+            <xs:enumeration value="virtual"/>
+            <xs:enumeration value="virpriv"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="var">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+      </xs:choice>
+      <xs:attribute name="type" use="required"/>
+      <xs:attribute name="decl" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="func">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:choice>
+          <xs:element ref="voidargs"/>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="unbounded" ref="arg"/>
+            <xs:element minOccurs="0" ref="varargs"/>
+          </xs:sequence>
+        </xs:choice>
+        <xs:element ref="return"/>
+        <xs:element minOccurs="0" ref="entry"/>
+        <xs:element minOccurs="0" ref="exit"/>
+        <xs:element minOccurs="0" ref="resources"/>
+        <xs:element ref="description"/>
+        <xs:element minOccurs="0" ref="limitations"/>
+      </xs:sequence>
+      <xs:attribute name="name" use="required"/>
+      <xs:attribute name="quals"/>
+      <xs:attribute name="vis" default="concrete">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="concrete"/>
+            <xs:enumeration value="virtual"/>
+            <xs:enumeration value="private"/>
+            <xs:enumeration value="virpriv"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="entry">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="exit">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="resources">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="varargs">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="voidargs">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="arg">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+      </xs:choice>
+      <xs:attribute name="type" use="required"/>
+      <xs:attribute name="name" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="return">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="par"/>
+        <xs:element ref="enum"/>
+        <xs:element ref="emph"/>
+        <xs:element ref="bold"/>
+        <xs:element ref="code"/>
+      </xs:choice>
+      <xs:attribute name="type" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="limitations">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="arglimit"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="precondition"/>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="postcondition"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="c">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="tab"/>
+        <xs:element ref="nl"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="emph" type="xs:string"/>
+  <xs:element name="bold" type="xs:string"/>
+  <xs:element name="code">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="tab"/>
+        <xs:element ref="nl"/>
+      </xs:choice>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="tab">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="nl">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="arglimit">
+    <xs:complexType mixed="true">
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element ref="code"/>
+        <xs:element ref="nl"/>
+      </xs:choice>
+      <xs:attribute name="argname" use="required"/>
+      <xs:attribute name="min"/>
+      <xs:attribute name="max"/>
+      <xs:attribute name="mult"/>
+      <xs:attribute name="align" default="0">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="0"/>
+            <xs:enumeration value="1"/>
+            <xs:enumeration value="2"/>
+            <xs:enumeration value="4"/>
+            <xs:enumeration value="8"/>
+            <xs:enumeration value="pow2"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+      <xs:attribute name="num" default="0">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="0"/>
+            <xs:enumeration value="Q63"/>
+            <xs:enumeration value="Q31"/>
+            <xs:enumeration value="Q23"/>
+            <xs:enumeration value="Q15"/>
+            <xs:enumeration value="Q7"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="precondition" type="xs:string"/>
+  <xs:element name="postcondition" type="xs:string"/>
+  <xs:complexType name="any" mixed="true">
+    <xs:sequence>
+      <xs:any minOccurs="0" maxOccurs="unbounded" processContents="strict"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

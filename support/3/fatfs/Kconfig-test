@@ -1,0 +1,6 @@
+config TEST_fatfs
+bool "fatfs"
+default n
+depends on FATFS && SRTC && BOARD_HAS_RAM_DISK
+help
+	FatFS test writing/reading a file to/from a ram disk

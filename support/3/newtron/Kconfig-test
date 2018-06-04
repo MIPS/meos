@@ -1,0 +1,6 @@
+config TEST_newtron
+bool "newtron"
+depends on NEWTRON
+default n
+help
+        Tests the Newtron module.

@@ -1,0 +1,5 @@
+config BSP_PIC32_STARTERKIT
+bool "PIC32 STARTER KIT"
+select ARCH_MIPS_PIC
+help
+	Target a PIC32 Starter Kit system.

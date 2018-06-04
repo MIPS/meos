@@ -1,0 +1,5 @@
+config BSP_CHIPKIT_WIFIRE
+bool "chipKIT WiFire"
+select ARCH_MIPS_PIC
+help
+	Target a chipKIT WiFire system.

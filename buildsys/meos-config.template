@@ -1,0 +1,150 @@
+#!/bin/sh
+####(C)2014###############################################################
+#
+# Copyright (C) 2014 MIPS Tech, LLC
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# 3. Neither the name of the copyright holder nor the names of its
+# contributors may be used to endorse or promote products derived from this
+# software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+####(C)2014###############################################################
+#
+#   Description:	Configuration query tool
+#
+##########################################################################
+
+help()
+{
+	cat <<EOF
+Usage: meos-config [OPTIONS] [LIBRARIES]
+Options:
+	[--prefix[=DIR]]
+	[--version]
+	[--cpu=N]
+	[--libs]
+	[--cflags]
+	[--cc]
+	[--cxx]
+	[--ld]
+	[--impexpc=C_OUT]
+	[--impexpld=LD_OUT]
+	[--rproc]
+EOF
+	exit $1
+}
+
+if [ $# -eq 0 ]; then
+	help -1 1>&2
+fi
+
+PREFIX=PP
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-*=*) OPTARG=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
+		*) 		OPTARG= ;;
+	esac
+
+	case $1 in
+		--prefix=*)
+			PREFIX=$OPTARG
+			;;
+		--prefix)
+			PRINTPREFIX=Y
+			;;
+		--version)
+			echo XX.YY.ZZ
+			exit 0
+			;;
+		--cpu=*)
+			CPU=$OPTARG
+			CPUFLAGS=-D_PROCESSOR=$OPTARG
+			;;
+		--cflags)
+			CFLAGS="FF -I${PREFIX}/include/ -I${PREFIX}/include/gen/ ${CPUFLAGS}"
+			PRINTCFLAGS=Y
+			;;
+		--rproc)
+			LDIR="-L${PREFIX}/lib/"
+			RFLAGS="-lrproc"
+			PRINTLDIR=Y
+			PRINTRFLAGS=Y
+			;;
+		--impexpld=*)
+			LDFILE=$OPTARG
+			LDINC=@$OPTARG
+			${PREFIX}/bin/dtwalk ${PREFIX}/walks/impexp/TT/ld ${PREFIX}/obj/bsp.dtb -Dprocessor=${CPU} WV > $OPTARG
+			;;
+		--impexpc=*)
+			CFILE=$OPTARG
+			${PREFIX}/bin/dtwalk ${PREFIX}/walks/impexp/TT/c ${PREFIX}/obj/bsp.dtb -Dprocessor=${CPU} WV > $OPTARG
+			;;
+		--libs)
+			LDIR="-L${PREFIX}/lib/"
+			LFLAGS="-Wl,--start-group -lMEOS LL ${LDINC} -Wl,--end-group"
+			PRINTLDIR=Y
+			PRINTLFLAGS=Y
+			;;
+		--cc)
+			CMD=CC
+			PRINTCMD=Y
+			;;
+		--cxx)
+			CMD=CXX
+			PRINTCMD=Y
+			;;
+		--ar)
+			CMD=ART
+			PRINTCMD=Y
+			;;
+		--target)
+			CMD=TT
+			PRINTCMD=Y
+			;;
+		*)
+			help -1 1>&2
+			;;
+	esac
+	shift
+done
+
+RESULT=
+if [ "$PRINTPREFIX" = "Y" ]; then
+	RESULT="$PREFIX"
+fi
+if [ "$PRINTCMD" = "Y" ]; then
+	RESULT="$RESULT $CMD"
+fi
+if [ "$PRINTCFLAGS" = "Y" ]; then
+	RESULT="$RESULT $CFLAGS"
+fi
+if [ "$PRINTLDIR" = "Y" ]; then
+	RESULT="$RESULT $LDIR"
+fi
+if [ "$PRINTRFLAGS" = "Y" ]; then
+	RESULT="$RESULT $RFLAGS"
+fi
+if [ "$PRINTLFLAGS" = "Y" ]; then
+	RESULT="$RESULT $LFLAGS"
+fi
+echo $RESULT

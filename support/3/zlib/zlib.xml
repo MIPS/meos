@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="zlib" prefix="zlib" modtype="Special">
+	<description>zlib - see http://zlib.net/. All libraries and include paths should be set up by meos-config, simply use as usual.</description>
+</module>

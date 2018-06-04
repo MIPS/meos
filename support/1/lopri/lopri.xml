@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="lopri" prefix="LOPRI" modtype="Special">
+	<description>Implements a common lowest priorty work queue. Use <code>KRN_queueWQ</code> to queue jobs on <code>LOPRI</code>.</description>
+	<imports>kernel</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<typedef>
+			<c>struct LOPRI_tag LOPRI_T</c>LOPRI system object.
+		</typedef>
+		<var type="KRN_WQ_T *" decl="LOPRI">
+			LOPRI queue. Use this when queuing low priority jobs.
+		</var>
+		<func name="LOPRI_init">
+			<arg type="LOPRI_T *" name="lp" traceable="Y">Pointer to LOPRI system object.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(lopri != NULL)</precondition>
+			</limitations>
+			<description>Start the lowest priority common work queue.
+			</description>
+		</func>
+		<epilogue>
+/* complete the LOPRI_T definition... */
+struct  LOPRI_tag{<nl/>
+		<tab/>KRN_WQ_T wq;<nl/>
+		<tab/>KRN_TASK_T tasks[1];<nl/>
+		<tab/>uint32_t stacks[CONFIG_LOPRI_STACKSIZE];<nl/>
+		<tab/>KRN_JOB_T jobs[CONFIG_LOPRI_JOBS];<nl/>
+		};<nl/>
+		</epilogue>
+	</interface>
+</module>

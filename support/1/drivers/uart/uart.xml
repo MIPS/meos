@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="uart" prefix="UART" modtype="Special">
+	<description>Provides a framework for UART drivers.</description>
+	<imports>kernel</imports>
+	<imports>ring</imports>
+	<interface>
+		<include lib="Y">stdio.h</include>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">meos/rings/ring.h</include>
+		<typedef vis="private"><c>struct UART_tag UART_T</c>(Incomplete) UART system object definition.</typedef>
+		<typedef vis="virtual"><c>struct UART_T {<nl/>
+		LST_LINK;<nl/>
+		RING_T	tx;<nl/>
+		RING_T	rx;<nl/>
+		UART_CFGFUNC_T *config;<nl/>
+		UART_ETEIFUNC_T *enableTXEmptyInt;<nl/>
+		UART_READYFUNC_T *rFunc;<nl/>
+		void * rPar;<nl/>
+		}</c>UART type definition.
+		<par/>
+		<code>tx</code> will be filled with data by <code>UART_write</code>. Drivers should read and transmit data from this ring. Received data should be written to <code>rx</code> so it may be read by <code>UART_read</code>.
+		<par/>
+		<code>config</code> implements <code>UART_config</code>.
+		<par/>
+		<code>enableTXEmptyInt</code> is called when <code>tx</code> is full, so it may be drained by refilling the UART TX FIFO. Drivers must automatically disable this interrupt when it is no longer useful.
+		<par/>
+		<code>rFunc</code> and <code>rPar</code> are used to implement <code>UART_readyFunc</code>.
+		</typedef>
+		<typedef><c>int32_t UART_CFGFUNC_T(UART_T *uart, const char *mode)</c>Used to configure UART. See <code>UART_config</code> for details.</typedef>
+		<typedef><c>void UART_ETEIFUNC_T(UART_T *uart)</c>Used to enable the TX buffer empty interrupt.</typedef>
+		<typedef><c>void UART_READYFUNC_T(void *priv)</c>Called when there is data to be read. Registered with <code>UART_ready</code>.</typedef>
+		<func name="UART_config" vis="virtual">
+			<arg type="UART_T *" name="uart" tracable="Y">Pointer to UART system object.</arg>
+			<arg type="const char *" name="config">Configuration string.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero">Reconfiguration failed.</item>
+					<item val="0">Reconfiguration succeeded.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((uart != NULL) &amp;&amp; (config != NULL))</precondition>
+			</limitations>
+			<description>Reconfigures a UART according to a configuration string.
+			<par/>
+			Configuration strings have the format &lt;baud&gt;&lt;parity&gt;[size][stop][flow], where <code>baud</code> is a numeric specifying the baudrate; <code>parity</code> is <emph>n</emph>, <emph>o</emph>, or <emph>e</emph> for none, odd, or even, respectively; <code>size</code> is the number of bits per character, <code>stop</code> is the number of stop bits, and <code>flow</code> is not present for none, or <emph>r</emph> for hardware flow control. Specific implementations may extend this syntax, as specified by their own documentation.
+			</description>
+		</func>
+		<func name="UART_fopen">
+			<arg type="UART_T *" name="uart" tracable="Y">Pointer to UART system object.</arg>
+			<arg type="const char *" name="mode"><code>fopen</code> style mode string.</arg>
+			<return type="FILE *">FILE pointer.</return>
+			<limitations>
+				<precondition>((uart != NULL) &amp;&amp; (mode != NULL))</precondition>
+			</limitations>
+			<description>Open a UART as a stdio compatible <code>FILE</code> object.</description>
+		</func>
+		<func name="UART_read">
+			<arg type="void *" name="dummy">Unused.</arg>
+			<arg type="void *" name="buffer">Buffer to read into.</arg>
+			<arg type="int" name="size">Number of bytes to write per transaction.</arg>
+			<arg type="int" name="n">Number of transactions.</arg>
+			<arg type="void *" name="uart">UART to read data from.</arg>
+			<return type="int">Number of transactions performed.</return>
+			<limitations>
+			<precondition>((buffer != NULL) &amp;&amp; (uart != NULL))</precondition>
+			</limitations>
+			<description>Read <code>size</code> multiplied by <code>n</code> bytes from <code>uart</code> to <code>buffer</code>.
+			<par/>
+			If <code>size</code> is 1, then this function will short read upon receiving a line ending. Additionally, other line endings will be converted to new lines.
+			<par/>
+			This function conforms to the <code>_mips_xfermem_fn</code> signature.
+			</description>
+		</func>
+		<func name="UART_ready">
+			<arg type="UART_T *" name="uart" traceable="Y">Pointer to UART.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Data available to read.</item>
+					<item val="0 (FALSE)">Data not available.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(uart != NULL)</precondition>
+			</limitations>
+			<description>Test for readable data.</description>
+		</func>
+		<func name="UART_readyFunc">
+			<arg type="UART_T *" name="uart" traceable="Y">Pointer to UART.</arg>
+			<arg type="UART_READYFUNC_T *" name="func">Pointer to callback function.</arg>
+			<arg type="void *" name="par">Pointer to callback function parameter.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(uart != NULL)</precondition>
+			</limitations>
+			<description>Provide a callback function to be invoked when the UART becomes ready to read.</description>
+		</func>
+		<func name="UART_write">
+			<arg type="void *" name="dummy">Unused.</arg>
+			<arg type="void *" name="buffer">Data to write.</arg>
+			<arg type="int" name="size">Number of bytes to write per transaction.</arg>
+			<arg type="int" name="n">Number of transactions.</arg>
+			<arg type="void *" name="uart">UART to write data to.</arg>
+			<return type="int">Number of transactions performed.</return>
+			<limitations>
+			<precondition>((buffer != NULL) &amp;&amp; (uart != NULL))</precondition>
+			</limitations>
+			<description>Write <code>size</code> multiplied by <code>n</code> bytes from <code>buffer</code> to <code>uart</code>.
+			<par/>
+			This function conforms to the <code>_mips_xfermem_fn</code> signature.
+			</description>
+		</func>
+		<func name="UART_inject">
+			<arg type="void *" name="dummy">Unused.</arg>
+			<arg type="void *" name="buffer">Data to write.</arg>
+			<arg type="int" name="size">Number of bytes to write per transaction.</arg>
+			<arg type="int" name="n">Number of transactions.</arg>
+			<arg type="void *" name="uart">UART to write data to.</arg>
+			<return type="int">Number of transactions performed.</return>
+			<limitations>
+			<precondition>((buffer != NULL) &amp;&amp; (uart != NULL))</precondition>
+			</limitations>
+			<description>Write <code>size</code> multiplied by <code>n</code> bytes from <code>buffer</code> to the read queue of <code>uart</code>.
+			<par/>
+			This function conforms to the <code>_mips_xfermem_fn</code> signature.
+			</description>
+		</func>
+		<func name="UART_extract">
+			<arg type="void *" name="dummy">Unused.</arg>
+			<arg type="void *" name="buffer">Buffer to read into.</arg>
+			<arg type="int" name="size">Number of bytes to write per transaction.</arg>
+			<arg type="int" name="n">Number of transactions.</arg>
+			<arg type="void *" name="uart">UART to write data to.</arg>
+			<return type="int">Number of transactions performed.</return>
+			<limitations>
+			<precondition>((buffer != NULL) &amp;&amp; (uart != NULL))</precondition>
+			</limitations>
+			<description>Read <code>size</code> multiplied by <code>n</code> bytes from the transmit queue of <code>uart</code> to <code>buffer</code>.
+			<par/>
+			This function conforms to the <code>_mips_xfermem_fn</code> signature.
+			</description>
+		</func>
+		<epilogue>
+/* complete the UART_T definition... */
+struct UART_tag {
+LST_LINK;
+RING_T	tx;
+RING_T	rx;
+UART_CFGFUNC_T *config;
+UART_ETEIFUNC_T *enableTXEmptyInt;
+UART_READYFUNC_T *rFunc;
+void * rPar;
+};
+
+#define UART_ready(U) !RING_empty(&amp;((UART_T*)(U))->rx)
+#define UART_config(U, C) ((UART_T*)(U))->config((U), (C))
+		</epilogue>
+	</interface>
+</module>

@@ -1,0 +1,5 @@
+config QIO
+bool "Queued IO (QIO)"
+default n
+help
+	Build legacy QIO support.

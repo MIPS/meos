@@ -1,0 +1,110 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "microchip,pic32mzda-starterkit";
+	interrupt-parent = <&evic>;
+
+	clocks {
+		SYSCLK: SYSCLK {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <200000000>;
+		};
+
+		PBCLK2: PBCLK2 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <100000000>;
+		};
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			compatible = "mti,mips14KEc", "mti,mips14Kc", "mti,mips", "mti,embedded-cpu";
+			device_type = "cpu";
+			clocks = <&SYSCLK>;
+			mti,vmem = <0x80000000 0x00080000>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x08000000 0x08000000>;
+	};
+
+	evic: interrupt-controller@1f810000 {
+		compatible = "microchip,pic32mzda-evic";
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		reg = <0x1f810000 0x1000>;
+		microchip,external-irqs = <3 8 13 18 23>;
+	};
+
+	ttyS0: uart1@1f822000 {
+		compatible = "microchip,pic32mzda-uart";
+		reg = <0x1f822000 0x50>;
+		interrupts = <112 4>,
+			<113 4>,
+			<114 4>;
+		clocks = <&PBCLK2>;
+	};
+
+	uart2: uart2@1f822200 {
+		compatible = "microchip,pic32mzda-uart";
+		reg = <0x1f822200 0x50>;
+		interrupts = <145 4>,
+			<146 4>,
+			<147 4>;
+		clocks = <&PBCLK2>;
+	};
+
+	uart3: uart3@1f822400 {
+		compatible = "microchip,pic32mzda-uart";
+		reg = <0x1f822400 0x50>;
+		interrupts = <157 4>,
+			<158 4>,
+			<159 4>;
+		clocks = <&PBCLK2>;
+	};
+
+	uart4: uart4@1f822600 {
+		compatible = "microchip,pic32mzda-uart";
+		reg = <0x1f822600 0x50>;
+		interrupts = <170 4>,
+			<171 4>,
+			<172 4>;
+		clocks = <&PBCLK2>;
+	};
+
+	uart5: uart5@1f822800 {
+		compatible = "microchip,pic32mzda-uart";
+		reg = <0x1f822800 0x50>;
+		interrupts = <179 4>,
+			<180 4>,
+			<181 4>;
+		clocks = <&PBCLK2>;
+	};
+
+	uart6: uart6@1f822A00 {
+		compatible = "microchip,pic32mzda-uart";
+		reg = <0x1f822A00 0x50>;
+		interrupts = <188 4>,
+		<189 4>,
+		<190 4>;
+		clocks = <&PBCLK2>;
+	};
+	pic32_ethernet: ethernet@BF882000 {
+		compatible = "microchip,pic32mzda-eth";
+		device_type = "network";
+		interrupt-parent = <&evic>;
+		interrupts = <153 1>;
+		mac-address = [00 19 F5 FF FF F0];
+		reg = <0x1F882000 0x10000>;
+		phy-mode = "rmii";
+	};
+};

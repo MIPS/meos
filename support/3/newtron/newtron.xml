@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="Newtron" prefix="Newtron" modtype="Special">
+	<description>Newtron - see http://mynewt.apache.org/os/modules/fs/nffs/nffs/. Once a <code>MASS</code> compatible device has been mounted with <code>NEWTRON_init</code>, simply use as usual. All libraries and include paths should be set up by meos-config.</description>
+	<interface>
+		<prologue>
+			#include &lt;stdlib.h&gt;
+			#include &lt;stdint.h&gt;
+			#include "newtron/fs/fs/fs.h"
+			#include "newtron/fs/fs/fs_if.h"
+			#include "newtron/fs/nffs/nffs.h"
+			#include "newtron/hw/bsp/bsp.h"
+
+			#if !defined( H_NFFS_PRIV_) &amp;&amp; !defined(_OS_H) &amp;&amp; !defined(_OS_MUTEX_H_)
+			#define NFFS_SHORT_FILENAME_LEN      3
+
+			#define	SLIST_ENTRY(type)                               \
+			struct {                                                \
+			    struct type *sle_next;  /* next element */          \
+			}
+
+			#define	SLIST_HEAD(name, type)                          \
+			struct name {                                           \
+			    struct type *slh_first;	/* first element */         \
+			}
+
+			#define	TAILQ_HEAD(name, type)						\
+			struct name {								\
+				struct type *tqh_first;	/* first element */			\
+				struct type **tqh_last;	/* addr of last next element */		\
+			}
+
+			#define	TAILQ_ENTRY(type)						\
+			struct {								\
+				struct type *tqe_next;	/* next element */			\
+				struct type **tqe_prev;	/* address of previous next element */	\
+			}
+
+			struct nffs_hash_entry {
+			    SLIST_ENTRY(nffs_hash_entry) nhe_next;
+			    uint32_t nhe_id;        /* 0 - 0x7fffffff if inode; else if block. */
+			    uint32_t nhe_flash_loc; /* Upper-byte = area idx; rest = area offset. */
+			};
+
+			SLIST_HEAD(nffs_inode_list, nffs_inode_entry);
+
+			struct nffs_inode_entry {
+			    struct nffs_hash_entry nie_hash_entry;
+			    SLIST_ENTRY(nffs_inode_entry) nie_sibling_next;
+			    union {
+			        struct nffs_inode_list nie_child_list;           /* If directory */
+			        struct nffs_hash_entry *nie_last_block_entry;    /* If file */
+			        uint32_t nie_lastblock_id;
+			    };
+			    uint8_t nie_refcnt;
+			    uint8_t nie_flags;
+			    uint8_t nie_blkcnt;
+			    uint8_t reserved8;
+			};
+
+			struct nffs_inode {
+			    struct nffs_inode_entry *ni_inode_entry; /* Points to real inode entry. */
+			    uint32_t ni_seq;                         /* Sequence number; greater
+			                                                supersedes lesser. */
+			    struct nffs_inode_entry *ni_parent;      /* Points to parent directory. */
+			    uint8_t ni_filename_len;                 /* # chars in filename. */
+			    uint8_t ni_filename[NFFS_SHORT_FILENAME_LEN]; /* First 3 bytes. */
+			};
+
+			struct nffs_file {
+			    struct nffs_inode_entry *nf_inode_entry;
+			    uint32_t nf_offset;
+			    uint8_t nf_access_flags;
+			};
+
+			struct nffs_block {
+			    struct nffs_hash_entry *nb_hash_entry;   /* Points to real block entry. */
+			    uint32_t nb_seq;                         /* Sequence number; greater
+			                                                supersedes lesser. */
+			    struct nffs_inode_entry *nb_inode_entry; /* Owning inode. */
+			    struct nffs_hash_entry *nb_prev;         /* Previous block in file. */
+			    uint16_t nb_data_len;                    /* # of data bytes in block. */
+			    uint16_t reserved16;
+			};
+
+			struct nffs_cache_block {
+			    TAILQ_ENTRY(nffs_cache_block) ncb_link; /* Next / prev cached block. */
+			    struct nffs_block ncb_block;            /* Full data block. */
+			    uint32_t ncb_file_offset;               /* File offset of this block. */
+			};
+
+			TAILQ_HEAD(nffs_cache_block_list, nffs_cache_block);
+
+			/** Represents a single cached file inode. */
+			struct nffs_cache_inode {
+			    TAILQ_ENTRY(nffs_cache_inode) nci_link;        /* Sorted; LRU at tail. */
+			    struct nffs_inode nci_inode;                   /* Full inode. */
+			    struct nffs_cache_block_list nci_block_list;   /* List of cached blocks. */
+			    uint32_t nci_file_size;                        /* Total file size. */
+			};
+
+			struct nffs_dirent {
+			    struct nffs_inode_entry *nde_inode_entry;
+			};
+
+			struct nffs_dir {
+			    struct nffs_inode_entry *nd_parent_inode_entry;
+			    struct nffs_dirent nd_dirent;
+			};
+			#endif
+		</prologue>
+		<func name="NEWTRON_init">
+			<arg type="MASS_T *" name="mass" traceable="Y">Device containing Newtron filing system.</arg>
+			<arg type="struct nffs_file *" name="files">Array of files.</arg>
+			<arg type="size_t" name="n_files">Number of elements in <code>files[]</code>.</arg>
+			<arg type="struct nffs_inode_entry *" name="inodes">Array of inodes.</arg>
+			<arg type="size_t" name="n_inodes">Number of elements in <code>inodes[]</code>.</arg>
+			<arg type="struct nffs_hash_entry *" name="blocks">Array of blocks.</arg>
+			<arg type="size_t" name="n_blocks">Number of elements in <code>blocks[]</code>.</arg>
+			<arg type="struct nffs_cache_inode *" name="cache_inodes">Array of cached inodes.</arg>
+			<arg type="size_t" name="n_cache_inodes">Number of elements in <code>cache_inodes[]</code>.</arg>
+			<arg type="struct nffs_cache_block *" name="cache_blocks">Array of cached blocks.</arg>
+			<arg type="size_t" name="n_cache_blocks">Number of elemenst in <code>cache_blocks[]</code>.</arg>
+			<arg type="struct nffs_dir *" name="dirs">Array of directories.</arg>
+			<arg type="size_t" name="n_dirs">Number of elemenst in <code>dirs[]</code>.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((mass != NULL) &amp;&amp; (files != NULL) &amp;&amp; (inodes != NULL) &amp;&amp; (blocks != NULL) &amp;&amp; (cache_inodes != NULL) &amp;&amp; (cache_blocks != NULL) &amp;&amp; (dirs != NULL))</precondition>
+			</limitations>
+			<description>
+				Initialise a Newtron filing system on a MEOS mass storage device, using statically allocated memory. Replaces <code>nffs_init</code> in the Newtron initialisation sequence.
+			</description>
+		</func>
+	</interface>
+</module>

@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="vio" prefix="VIO" modtype="Functional">
+	<description>A Virtio root server implementation.</description>
+	<imports>mvz</imports>
+	<interface>
+		<prologue>
+#ifdef CONFIG_DRIVER_UART
+#include "meos/uart/uart.h"
+#endif
+struct VIO_tag;
+struct MQDRIVER_tag;
+struct MQ_MSG_tag;
+
+		</prologue>
+		<include lib="N">meos/mq/mq.h</include>
+		<include lib="N">meos/mvz/mvz.h</include>
+		<include lib="Y">mips/endian.h</include>
+		<include lib="Y">stdio.h</include>
+		<typedef vis="anonymous"><c>struct VIO_tag VIO_T</c>
+			Virtio root server context data type.
+		</typedef>
+		<typedef vis="anonymous"><c>struct VIO_q_tag VIO_Q_T</c>
+			Virtio queue context data type.
+		</typedef>
+		<typedef vis="anonymous"><c>struct VIO_dummy_tag VIO_DUMMY_T</c>
+			Dummy Virtio device server context data.
+		</typedef>
+		<typedef vis="anonymous"><c>struct VIO_console_tag VIO_CONSOLE_T</c>
+			Virtio console device server context data.
+		</typedef>
+		<typedef vis="anonymous"><c>struct VIO_net_tag VIO_NET_T</c>
+			Virtio network device server context data.
+		</typedef>
+		<typedef vis="anonymous"><c>void (VIO_BUDFUNC_T)(struct VIO_tag *vio, reg_t down)</c>
+			Virtio device server bring up/down function.
+		</typedef>
+		<typedef vis="private"><c>struct MQDRIVER_tag {<nl/>
+			<tab/>struct MQ_tag mq;<nl/>
+			<parahead/>
+			<tab/>MVZ_GUEST_T *guest;<nl/>
+			<tab/>struct VIO_tag *vio;<nl/>
+			<paratail/>
+		} MQDRIVER_T</c>Virtio compatible driver queue. For use by devices.</typedef>
+		<func name="MQDRIVER_addAvailable" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to add to.</arg>
+			<arg type="MQ_MSG_T *" name="msg" traceable="Y">Message to add.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (msg != NULL))</precondition>
+			</limitations>
+			<description>Low level message add available.</description>
+		</func>
+		<func name="MQDRIVER_getFirstAvailable" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<arg type="uint16_t *" name="flags">Out parameter to store vring flags.</arg>
+			<return type="uint16_t">Descriptor index of fetched message</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL) &amp;&amp; (flags != NULL))</precondition>
+			</limitations>
+			<description>Low level message get available. Fetches the first link of a chain.</description>
+		</func>
+		<func name="MQDRIVER_getMoreAvailable" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uint16_t" name="token">Descriptor index of previously fetched link.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<arg type="uint16_t *" name="flags">Out parameter to store vring flags.</arg>
+			<return type="uint16_t">Descriptor index of fetched message</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL) &amp;&amp; (flags != NULL))</precondition>
+			</limitations>
+			<description>Low level message get available. Fetches next link of a chain.</description>
+		</func>
+		<func name="MQDRIVER_getNextAvailable" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to add to.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Low level message get available. Terminates fetching a chain.</description>
+		</func>
+		<func name="MQDRIVER_getAvailable" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<return type="uint16_t">Descriptor index of fetched message.</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL))</precondition>
+			</limitations>
+			<description>Low level message get available. Fetches a 1 message chain.</description>
+		</func>
+		<func name="MQDRIVER_chainAvailable" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uint16_t" name="last">Descriptor index of previous message in chain.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<return type="uint16_t">Descriptor index of fetched message</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL) &amp;&amp; (flags != NULL))</precondition>
+			</limitations>
+			<description>Low level message chain and add available. Forges a new link in a chain.</description>
+		</func>
+		<func name="MQDRIVER_remainingAvailable" vis="private">
+			<arg type="MQDRIVER_T *" name="mq" traceable="Y">Message queue to query.</arg>
+			<return type="size_t">Number of descriptors available.</return>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Query the number of available descriptors waiting on <code>mq</code>.</description>
+		</func>
+		<func name="MQDRIVER_remainingUsed" vis="private">
+			<arg type="MQDRIVER_T *" name="mq" traceable="Y">Message queue to query.</arg>
+			<return type="size_t">Number of descriptors available.</return>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Query the number of used descriptors waiting on <code>mq</code>.</description>
+		</func>
+		<func name="MQDRIVER_addUsed" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to add used to.</arg>
+			<arg type="uint16_t" name="id">Descriptor index of message to add.</arg>
+			<arg type="uint32_t" name="size">Number of bytes used.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL))</precondition>
+			</limitations>
+			<description>Low level message add used.</description>
+		</func>
+		<func name="MQDRIVER_getUsed" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to get used from.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<return type="uint32_t">
+                                <enum>
+                                        <item val="Non-zero (TRUE)">Message fetched.</item>
+                                        <item val="0 (FALSE)">Get failed.</item>
+                                </enum>
+                        </return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL))</precondition>
+			</limitations>
+			<description>Low level message get used.</description>
+		</func>
+		<func name="MQDRIVER_autoRel" vis="private">
+			<arg type="MQDRIVER_T *" name="mq" traceable="Y">Message queue to clean.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (msg != NULL))</precondition>
+			</limitations>
+			<description>Scan the head of the used part of <code>mq</code> for releasable buffers. This happens automatically if interrupts are enabled.</description>
+		</func>
+		<func name="MQDRIVER_notify" vis="private">
+			<arg type="MQDRIVER_T *" name="mq" traceable="Y">Message queue to notify.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Notify a Virtio queue that processing may be required.</description>
+		</func>
+		<func name="MQDRIVER_setCallback" vis="private">
+			<arg type="MQDRIVER_T *" name="mq" traceable="Y">Message queue to return message to.</arg>
+			<arg type="MQ_CALLBACK_T *" name="callback">Callback to call.</arg>
+			<arg type="void *" name="cbPar">Parameter for callback function.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Set a callback to be called when the message queue receives an interrupt.</description>
+		</func>
+		<func name="MQDRIVER_init" vis="private">
+			<arg type="MQDRIVER_T *" name="mq"  traceable="Y">Message queue to initialise</arg>
+			<arg type="KRN_POOL_T *" name="hpool"  traceable="Y">Pool of MQDRIVER_MSG_Ts for message queue. The number of headers in this pool determines the size of the message queue.</arg>
+			<arg type="uintptr_t" name="desc">Guest physical address of virtqueue descriptor table.</arg>
+			<arg type="uintptr_t" name="avail">Guest physical address of virtqueue available ring.</arg>
+			<arg type="uintptr_t" name="used">Guest physical address of virtqueue used ring.</arg>
+			<arg type="size_t" name="pagesize">Page size for platform.</arg>
+			<arg type="MVZ_GUEST_T *" name="gt" traceable="Y">Pointer to guest containing message queue.</arg>
+			<arg type="struct VIO_tag *" name="vio" traceable="Y">Pointer to associated Virtio root server context data.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (hpool != NULL) &amp;&amp; (desc != 0) &amp;&amp; (avail != 0) &amp;&amp; (used != 0) &amp;&amp; (pagesize != 0) &amp;&amp; (gt != NULL) &amp;&amp; (vio != NULL))</precondition>
+			</limitations>
+			<description>Make Virtio queue owned by a guest available.</description>
+		</func>
+		<func name="VIO_init">
+			<arg type="VIO_T *" name="device">Pointer to a Virtio root server context.</arg>
+			<arg type="uint32_t" name="id">Value for Virtio DeviceID register.</arg>
+			<arg type="uint32_t" name="vendor">Value for Virtio VendorID register.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(device != NULL)</precondition>
+			</limitations>
+			<description>Initialise a Virtio root server. Note that this is abstract functionality, intended to be used by servers which implement concrete devices.</description>
+		</func>
+		<func name="VIO_kill">
+			<arg type="VIO_T *" name="device">Pointer to a Virtio root server context.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(device != NULL)</precondition>
+			</limitations>
+			<description>Shutdown a Virtio root server. This must be done before shutting down a guest, to prevent backing device activity from being inadvertantly forwarded to a dead guest.</description>
+		</func>
+		<func name="VIO_attach">
+			<arg type="VIO_T *" name="device">Pointer to a Virtio root server context.</arg>
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to a guest.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((device != NULL) &amp;&amp; (guest != NULL))</precondition>
+			</limitations>
+			<description>Attach the Virtio root server <code>device</code> to <code>guest</code>.
+			<par/>
+			<code>VIO_kill</code> must be used to undo this operation before destroying a guest.
+			</description>
+		</func>
+		<func name="VIO_writableGQ" vis="virpriv">
+			<arg type="VIO_Q_T *" name="vq">Pointer to a Virtio queue context.</arg>
+			<return type="size_t">Number of available descriptors.</return>
+			<limitations>
+				<precondition>(vq != NULL)</precondition>
+			</limitations>
+			<description>Query the number of available writable descriptors on <code>vq</code>.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="VIO_writeGQ">
+			<arg type="void *" name="address">Unused.</arg>
+			<arg type="void *" name="buffer">Buffer to read from.</arg>
+			<arg type="int" name="size">Size of elements to write.</arg>
+			<arg type="int" name="n">Number of elements to write.</arg>
+			<arg type="void *" name="priv">Pointer to a Virtio queue context.</arg>
+			<return type="int">Number of bytes written.</return>
+			<limitations>
+				<precondition>((buffer != NULL) &amp;&amp; ((size * n) != 0) &amp;&amp; (priv != NULL))</precondition>
+			</limitations>
+			<description>Write data to the specified Guest Queue. Generic read/write function compliant. Will split data across multiple guest buffers.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="VIO_readGQ">
+			<arg type="VIO_Q_T *" name="vq">Pointer to a Virtio queue context.</arg>
+			<arg type="MVZ_XFERFUNC_T *" name="w">Generic read/write function to receive data</arg>
+			<arg type="void *" name="wp">Private data for <code>w</code>.</arg>
+			<arg type="uintptr_t" name="wo">Initial <code>address</code> for <code>w</code>.</arg>
+			<return type="size_t">Number of bytes read.</return>
+			<limitations>
+				<precondition>((vq != NULL) &amp;&amp; (w != NULL))</precondition>
+			</limitations>
+			<description>Transfers data from the specified Guest Queue, receiving with a generic read/write function.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="VIO_synthInt">
+			<arg type="VIO_T *" name="vio">Pointer to a Virtio root server context.</arg>
+			<arg type="uint32_t" name="i">Virtio InterruptStatus flag to assert.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(vio != NULL)</precondition>
+			</limitations>
+			<description>Set the Virtio InterruptStatus flag <code>i</code> for the device and synthesize the appropriate guest interrupt to handle it.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="VIO_initDummy">
+			<arg type="VIO_DUMMY_T *" name="dummy">Pointer to a Virtio dummy root server context.</arg>
+			<arg type="uintptr_t" name="base">Guest physical address for device.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(dummy != NULL)</precondition>
+			</limitations>
+			<description>Initialise a Virtio dummy root server. This will handle register reads and writes, but implements no device. Useful for providing "blanking plates" within a guest memory map.
+			<par/>
+			This function should be called during guest initialisation.
+			</description>
+		</func>
+		<func name="VIO_initConsole" vis="virtual">
+			<arg type="VIO_CONSOLE_T *" name="console">Pointer to a Virtio console root server context.</arg>
+			<arg type="uintptr_t" name="base">Guest physical address for device.</arg>
+			<arg type="uint32_t" name="gInt">Guest interrupt number for device.</arg>
+			<arg type="UART_T *" name="uart">Backing UART device.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((console != NULL) &amp;&amp; (uart != NULL))</precondition>
+			</limitations>
+			<description>Initialise a Virtio console root server. This will transceive via <code>uart</code>.
+			<par/>
+			This function should be called during guest initialisation.
+			</description>
+		</func>
+		<func name="VIO_initNet" vis="virtual">
+			<arg type="VIO_NET_T *" name="net">Pointer to a Virtio net root server context.</arg>
+			<arg type="uintptr_t" name="base">Guest physical address for device.</arg>
+			<arg type="uint32_t" name="gInt">Guest interrupt number for device.</arg>
+			<arg type="struct netif *" name="netif">Pointer to LwIP netif device to transceive through.</arg>
+			<limitations>
+				<precondition>((net != NULL) &amp;&amp; (netif != NULL))</precondition>
+			</limitations>
+			<return type="void"/>
+			<description>Initialise a Virtio net root server. This will transceive packets through <code>netif</code>.
+			<par/>
+			By default, all incoming packets are delivered to all guests sharing the same interface. The <code>Filter network packets by MAC</code> configuration variable ensures packets are only delivered to devices with matching MAC addresses. Use <code>VIO_setMAC</code> to assign a guest a unique MAC to utilise this feature.
+			<par/>
+			This function should be called during guest initialisation.
+			</description>
+		</func>
+		<func name="VIO_setMAC" vis="virtual">
+			<arg type="VIO_NET_T *" name="net">Pointer to a Virtio net root server context.</arg>
+			<arg type="uint8_t" name="m1">First octet of virtual MAC address.</arg>
+			<arg type="uint8_t" name="m2">Second octet of virtual MAC address.</arg>
+			<arg type="uint8_t" name="m3">Third octet of virtual MAC address.</arg>
+			<arg type="uint8_t" name="m4">Fourth octet of virtual MAC address.</arg>
+			<arg type="uint8_t" name="m5">Fifth octet of virtual MAC address.</arg>
+			<arg type="uint8_t" name="m6">Sixth octet of virtual MAC address.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(net != NULL)</precondition>
+			</limitations>
+			<description>Override the MAC address used by the Virtio net device.
+			<par/>
+			By default, all incoming packets are delivered to all guests sharing the same interface. The <code>Filter network packets by MAC</code> configuration variable ensures packets are only delivered to devices with matching MAC addresses. Use this function to assign a guest a unique MAC to utilise this feature.
+			<par/>
+			This function should be called during guest initialisation.</description>
+		</func>
+		<func name="VIO_reconfigure">
+			<arg type="VIO_T *" name="vio">Pointer to a Virtio root server context.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(vio != NULL)</precondition>
+			</limitations>
+			<description>Inform the guest that the device configuration has changed by incrementing the ConfigGeneration register and synthesizing a Configuration Change interrupt within the guest.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+	<epilogue>
+
+#define VIO_QUEUE_NUM_MAX 64
+
+struct VIO_q_tag {
+	MQDRIVER_T	 mq;
+	MVZ_GUEST_T *guest;
+	struct VIO_tag *vio;
+	uint32_t numMax;
+	uint32_t num;
+	uint32_t ready;
+	uint64_t desc;
+	uint64_t avail;
+	uint64_t used;
+	KRN_POOL_T hPool;
+	MQ_MSG_T headers[VIO_QUEUE_NUM_MAX];
+};
+
+struct VIO_tag {
+	KRN_POOLLINK;
+	// Common config block
+	uint32_t deviceID;
+	uint32_t vendorID;
+	uint32_t deviceFeatures[2];
+	uint32_t deviceFeaturesSel;
+	uint32_t driverFeatures[2];
+	uint32_t driverFeaturesSel;
+	VIO_Q_T *queues;
+	uint32_t nQueues;
+	uint32_t queueSel;
+	uint32_t queueNotify;
+	uint32_t interrupts;
+	uint32_t status;
+	uint32_t configGeneration;
+	MVZ_VREGS_T regs;
+	MVZ_XFERFUNC_T *read;
+	MVZ_XFERFUNC_T *write;
+	VIO_BUDFUNC_T *bringUpDown;
+	uint32_t gInt;
+};
+
+struct VIO_dummy_tag {
+	VIO_T vio;
+};
+
+inline static size_t VIO_writableGQ(VIO_Q_T *vq)
+{
+	return MQDRIVER_remainingAvailable(&amp;vq->mq);
+}
+
+#ifdef CONFIG_DRIVER_UART
+#include "meos/uart/uart.h"
+
+struct VIO_console_tag {
+	VIO_T vio;
+	VIO_Q_T queues[2];
+	MVZ_XFERFUNC_T *w;
+	void *wp;
+	MVZ_XFERFUNC_T *r;
+	void *rp;
+};
+
+void VIO_initConsole(VIO_CONSOLE_T * console, uintptr_t base, uint32_t gInt, UART_T *uart);
+#endif
+
+#ifdef CONFIG_LWIP
+#include "lwip/netifapi.h"
+
+struct VIO_net_tag {
+	VIO_T vio;
+	VIO_Q_T queues[2];
+	uint8_t mac[6];
+	uint16_t status;
+	void *netif;
+};
+
+void VIO_initNet(VIO_NET_T * net, uintptr_t base, uint32_t gInt,struct netif *netif);
+void VIO_setMAC(VIO_NET_T * net, uint8_t m1, uint8_t m2, uint8_t m3, uint8_t m4, uint8_t m5, uint8_t m6);
+#endif
+	</epilogue>
+	</interface>
+</module>

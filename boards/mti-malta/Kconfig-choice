@@ -1,0 +1,20 @@
+config BSP_MTI_MALTA
+bool "Malta"
+select BOARD_HAS_RAM_DISK
+select ARCH_MIPS_BASELINE
+help
+	Target a MALTA system without a GIC.
+
+config BSP_MTI_MALTA_GIC_2
+bool "Malta/2 (with GIC)"
+select BOARD_HAS_RAM_DISK
+select ARCH_MIPS_GIC
+help
+	Target a MALTA system with a GIC and 2 VPEs.
+
+config BSP_MTI_MALTA_GIC_4
+bool "Malta/4 (with GIC)"
+select BOARD_HAS_RAM_DISK
+select ARCH_MIPS_GIC
+help
+	Target a MALTA system with a GIC and 4 VPEs.

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="virtionet" prefix="VIRTIONET" modtype="Special">
+	<description>VIRTIONET LWIP driver</description>
+	<imports>kernel</imports>
+	<imports>lwip</imports>
+	<interface>
+		<include lib="Y">stdio.h</include>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">lwip/netif.h</include>
+		<typedef vis="private"><c>struct VIRTIONET_tag VIRTIONET_T</c>(Incomplete) VIRTIONET system object definition.</typedef>
+		<func name="VIRTIONET_dtInit">
+			<arg type="VIRTIONET_T *" name="virtionet" traceable="Y">Pointer to VIRTIONET system object.</arg>
+			<arg type="IRQ_DESC_T *" name="irq">IRQ descriptor for specified VIRTIONET.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((uart != NULL) &amp;&amp; (irq != NULL))</precondition>
+			</limitations>
+			<description>Initialises the VIRTIONET described by <code>virtionet</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+typedef struct {
+	MQ_HOSTHEADER_T header;
+	VIRTIO_NET_HDR_T nHeader;
+	uint8_t data[1526];
+} VIRTIONETMSG_T;
+/* complete the VIRTIONET_T definition... */
+struct VIRTIONET_tag {
+	struct netif netif;
+	uintptr_t	pAddr;
+	void*		ack;
+	MQ_MSG_T	rheaders[64];
+	KRN_POOL_T	rhpool;
+	VIRTIONETMSG_T rmsgs[64];
+	KRN_POOL_T	rmpool;
+	MQDEVICE_T 	rq;
+	uint8_t rring[8192];
+	MQ_MSG_T	wheaders[64];
+	KRN_POOL_T	whpool;
+	VIRTIONETMSG_T wmsgs[64];
+	KRN_POOL_T	wmpool;
+	MQDEVICE_T 	wq;
+	uint8_t wring[8192];
+};
+		</epilogue>
+	</interface>
+</module>

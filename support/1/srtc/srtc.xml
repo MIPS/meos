@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="srtc" prefix="SRTC" modtype="Special">
+	<description>Software Real Time Clock.</description>
+	<imports>kernel</imports>
+	<imports>sntp</imports>
+	<interface>
+		<include lib="Y">stdint.h</include>
+		<include lib="Y">time.h</include>
+		<typedef>
+			<c>struct SRTC_tag SRTC_T</c>SRTC system object.
+		</typedef>
+		<func name="SRTC_init">
+			<arg type="SRTC_T *" name="srtc">SRTC system object.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(srtc != NULL)</precondition>
+			</limitations>
+			<description>Initialise the Software Real Time Clock. This does not start the clock - <code>SRTC_mark</code> or <code>SRTC_ntp</code> must be called before requesting the time with <code>SRTC_now</code>.
+			</description>
+		</func>
+		<func name="SRTC_mark">
+			<arg type="time_t" name="now">The current Unix time.</arg>
+			<return type="void"/>
+			<description>Set the current time.</description>
+		</func>
+		<func name="SRTC_now">
+			<voidargs/>
+			<return type="time_t">The current Unix time.</return>
+			<description>Get the current time.</description>
+		</func>
+		<func name="SRTC_ntp">
+			<voidargs/>
+			<return type="void"/>
+			<description>Get the time synchronised via NTP.</description>
+		</func>
+		<func name="SRTC_reverseCalibrate">
+			<voidargs/>
+			<return type="void"/>
+			<description>Sample network time and try to calibrate the MEOS jiffy clock.</description>
+		</func>
+		<epilogue>
+		struct SRTC_tag {
+			time_t epoch;
+			uint32_t epochj;
+			KRN_TIMER_T timer;
+		#ifdef CONFIG_SNTP
+			KRN_TIMER_T ntimer;
+		#endif
+		};
+		</epilogue>
+	</interface>
+</module>

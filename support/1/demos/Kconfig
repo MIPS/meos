@@ -1,0 +1,98 @@
+config DEMO_eliza
+bool "Eliza serial demo"
+default n
+depends on ARCH_MIPS_PIC || ARCH_MIPS_GIC
+help
+	A demonstration of serial I/O, using Eliza.
+
+config DEMO_ckw_gpio
+bool "ChipKit Wi-Fire GPIO demo"
+default n
+depends on ARCH_MIPS_PIC
+help
+	A demonstration of GPIO and interrupts, using the buttons and LEDs on
+	the ChipKit Wi-Fire.
+
+config DEMO_mrf24g
+bool "ChipKit Wi-Fire MRF24G demo"
+default n
+depends on DRIVER_MRF24G
+help
+	A demonstration of scanning with the MRF24G.
+
+config DEMO_timed_paranoia
+bool "Timed FPU Paranoia"
+default n
+help
+	A version of FPU paranoia that is timed with performance counters.
+
+config DEMO_web_page
+bool "lwIP web page demo"
+default n
+depends on LWIP
+help
+	LwIP demo displaying an interactive web page.
+
+config DEMO_mipsFPGA_demo
+bool "MIPS FPGA demo"
+default n
+depends on LWIP && ARCH_MIPS_BASELINE_XPSINTC
+help
+	MIPS FPGA demo.
+
+config DEMO_tftp_demo
+bool "tftp demo"
+default n
+depends on TFTP
+help
+	TFTP demo reading a file from a TFTP server.
+
+config DEMO_srtc_demo
+bool "srtc demo"
+default n
+depends on SNTP && SRTC
+help
+	SRTC demo.
+
+config DEMO_mvz_static
+bool "MEOS-VZ static demo"
+default y
+depends on MVZ
+depends on !MVZ_TLB_REFILL
+help
+	MEOS-VZ static demo.
+
+config DEMO_mvz_dynamic
+bool "MEOS-VZ dynamic demo"
+default y
+depends on MVZ
+depends on MVZ_TLB_REFILL
+help
+	MEOS-VZ dynamic demo.
+
+config DEMO_mvz_comms
+bool "MEOS-VZ communications demo"
+default y
+depends on MVZ
+depends on !MVZ_TLB_REFILL
+help
+	MEOS-VZ communications demo.
+
+
+config DEMO_hello
+bool "MEOS-VZ hello demo"
+default y
+help
+	Guest for MEOS-VZ static demo.
+
+config DEMO_simplexmit
+bool "MEOS-VZ simple transmit demo"
+default y
+help
+	Guest for MEOS-VZ communication demo.
+
+config DEMO_simplerecv
+bool "MEOS-VZ simple receive demo"
+default y
+help
+	Guest for MEOS-VZ communication demo.

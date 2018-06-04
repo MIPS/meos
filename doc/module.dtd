@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!ELEMENT module (description, imports*, interface)>
+<!ATTLIST module
+	modtype (Functional | System | Special) #REQUIRED
+	name CDATA #REQUIRED
+	prefix CDATA #REQUIRED
+>
+<!ELEMENT description (#PCDATA | par | enum | emph | bold | code)*>
+<!ELEMENT enum (item)+>
+<!ELEMENT item (#PCDATA | par | enum | emph | bold | code | nl)*>
+<!ATTLIST item
+	val CDATA #REQUIRED
+>
+<!ELEMENT par EMPTY>
+<!ELEMENT imports (#PCDATA)>
+<!ELEMENT prologue ANY>
+<!ELEMENT epilogue ANY>
+<!ELEMENT interface (prologue?, include*, define*, typedef*, var*, func*, postinclude*, epilogue?)>
+<!ELEMENT include (#PCDATA)>
+<!ATTLIST include
+	lib (Y | N) #REQUIRED
+>
+<!ELEMENT postinclude (#PCDATA)>
+<!ATTLIST postinclude
+	lib (Y | N) #REQUIRED
+>
+<!ELEMENT define (#PCDATA | par | enum | emph | bold | code | c)*>
+<!ATTLIST define
+	vis (concrete | virtual) "concrete"
+>
+<!ELEMENT typedef (#PCDATA | par | enum | emph | bold | code | c)*>
+<!ATTLIST typedef
+	vis (public | private | anonymous | virtual | virpriv | viranon) #IMPLIED
+>
+<!ELEMENT var (#PCDATA | par | enum | emph | bold | code)*>
+<!ATTLIST var
+	type CDATA #REQUIRED
+	decl CDATA #REQUIRED
+>
+<!ELEMENT func ((voidargs | (arg*, varargs?)), return, entry?, exit?, resources?, description, limitations?)>
+<!ELEMENT entry (#PCDATA | par | enum | emph | bold | code)*>
+<!ELEMENT exit (#PCDATA | par | enum | emph | bold | code)*>
+<!ELEMENT resources (#PCDATA | par | enum | emph | bold | code)*>
+<!ELEMENT varargs EMPTY>
+<!ELEMENT voidargs EMPTY>
+<!ATTLIST func
+	name CDATA #REQUIRED
+	quals CDATA #IMPLIED
+	vis (concrete | virtual | private | virpriv) "concrete"
+	return (Y | N) "Y"
+>
+<!ELEMENT arg (#PCDATA | par | enum | emph | bold | code)*>
+<!ATTLIST arg
+	type CDATA #REQUIRED
+	name CDATA #REQUIRED
+	traceable (Y | N) "N"
+>
+<!ELEMENT return (#PCDATA | par | enum | emph | bold | code)*>
+<!ATTLIST return
+	type CDATA #REQUIRED
+>
+<!ELEMENT limitations (arglimit*, precondition*, postcondition*)>
+<!ELEMENT c (#PCDATA | tab | nl | parahead | paratail)*>
+<!ELEMENT emph (#PCDATA)>
+<!ELEMENT bold (#PCDATA)>
+<!ELEMENT code (#PCDATA | tab | nl)*>
+<!ELEMENT tab EMPTY>
+<!ELEMENT nl EMPTY>
+<!ELEMENT parahead EMPTY>
+<!ELEMENT paratail EMPTY>
+<!ELEMENT arglimit (#PCDATA | code | nl)*>
+<!ATTLIST arglimit
+	argname CDATA #REQUIRED
+	min CDATA #IMPLIED
+	max CDATA #IMPLIED
+	mult CDATA #IMPLIED
+	align (0 | 1 | 2 | 4 | 8 | pow2) "0"
+	num (0 | Q63 | Q31 | Q23 | Q15 | Q7) "0"
+>
+<!ELEMENT precondition (#PCDATA)>
+<!ELEMENT postcondition (#PCDATA)>

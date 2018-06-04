@@ -1,0 +1,5 @@
+config TIMISR
+bool "Timer ISR backward compatibility"
+default n
+help
+	Build legacy timer ISR compatibility.

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="lwIP" prefix="lwIP" modtype="Special">
+	<description>Light Weight IP - see http://lwip.wikia.com/wiki/LwIP_Wiki. The board support package will initialise the core of LWIP and install all configured packet drivers. Interfaces must however be configured prior to use. All libraries and include paths should be set up by meos-config, simply use as usual.</description>
+</module>

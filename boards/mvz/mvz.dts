@@ -1,0 +1,86 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "mti,mvz-guest";
+	interrupt-parent = <&cpuirq>;
+
+	clocks {
+		GL_LV_CLK0: GL_LV_CLK0 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <66000000>;
+		};
+		GL_A3_LV_CLK0: GL_A3_LV_CLK0 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <66000000>;
+		};
+		GL_LV_CLK1: GL_LV_CLK1 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <40000000>;
+		};
+		GL_A3_LV_CLK1: GL_A3_LV_CLK1 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <40000000>;
+		};
+		PIC_CLK_20MHZ: PIC_CLK_20MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <20000000>;
+		};
+		USBPHY_CLK_24MHZ: USBPHY_CLK_24MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
+		USB_CLK_24MHZ: USB_CLK_24MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
+		ETH_CLK_25MHZ: ETH_CLK_25MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <25000000>;
+		};
+		GL_CLK_24_576: GL_CLK_24_576 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24576000>;
+		};
+		GL_LV_CLK_P: GL_LV_CLK_P {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <200000000>;
+		};
+		GL_LV_CLK_N: GL_LV_CLK_N {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <200000000>;
+		};
+		CP0_CLK: CP0_CLK {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <33000000>;
+		};
+	};
+
+	cpus {
+		cpu@0 {
+			compatible = "mti,embedded-cpu", "mti,mips", "mti,mips24K";
+			clocks = <&GL_LV_CLK0>;
+		};
+	};
+
+	cpuirq: interrupt-controller {
+		compatible = "mti,cpu-interrupt-controller";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		#address-cells = <0>;
+		mti,ipti = <7>;
+	};
+};

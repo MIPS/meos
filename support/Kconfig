@@ -1,0 +1,42 @@
+menu "Utility"
+source "$WORK_DIR/support/1/lopri/Kconfig"
+source "$WORK_DIR/support/1/qio/Kconfig"
+source "$WORK_DIR/support/3/zlib/Kconfig"
+source "$WORK_DIR/support/1/srtc/Kconfig"
+source "$WORK_DIR/support/1/timisr/Kconfig"
+endmenu
+
+config IP
+bool
+default n
+
+menu "Networking"
+source "$WORK_DIR/support/3/lwip/Kconfig"
+source "$WORK_DIR/support/1/tftp/Kconfig"
+source "$WORK_DIR/support/1/sntp/Kconfig"
+endmenu
+
+menuconfig MASS
+bool "Mass storage"
+default n
+help
+	Mass storage abstraction.
+
+source "$WORK_DIR/support/1/mass/Kconfig"
+
+source "$WORK_DIR/support/1/cpio/Kconfig"
+source "$WORK_DIR/support/3/fatfs/Kconfig"
+source "$WORK_DIR/support/3/newtron/Kconfig"
+
+menu "Hypervision"
+source "$WORK_DIR/support/1/mvz/Kconfig"
+endmenu
+
+menu "Drivers"
+source "$WORK_DIR/support/1/drivers/Kconfig"
+source "$WORK_DIR/support/3/drivers/Kconfig"
+endmenu
+
+menu "Demos"
+source "$WORK_DIR/support/1/demos/Kconfig"
+endmenu

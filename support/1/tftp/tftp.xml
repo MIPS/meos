@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="tftp" prefix="TFTP" modtype="Special">
+	<description>Trivial File Transfer Protocol.</description>
+	<imports>kernel</imports>
+	<imports>lwip</imports>
+	<interface>
+		<typedef>
+			<c>struct TFTP_tag TFTP_T</c>TFTP connection object.
+		</typedef>
+		<func name="TFTP_init">
+			<arg type="TFTP_T *" name="tftp">TFTP connection object.</arg>
+			<arg type="const char *" name="host">Host name to connect to.</arg>
+			<arg type="const char *" name="filename">File to download</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((tftp != NULL) &amp;&amp; (host != NULL) &amp;&amp; (filename != NULL))</precondition>
+			</limitations>
+			<description>Initialise a TFTP connection object. Connection does not occur until transfers are performed with <code>TFTP_read()</code>.
+			</description>
+		</func>
+		<func name="TFTP_read">
+			<arg type="void *" name="offset">The number of bytes into the stream, cast to a void pointer.</arg>
+			<arg type="void *" name="recvBuffer">The buffer to read into.</arg>
+			<arg type="int" name="size">Transfer size.</arg>
+			<arg type="int" name="n">Number of transfers.</arg>
+			<arg type="void *" name="vtftp"><code>TFTP_T</code> object, cast to a void pointer.</arg>
+			<return type="int">Number of bytes transferred, or negative on error</return>
+			<description>Download <code>size*n</code> bytes of data as specified from <code>vtftp</code>. Uses the MIPS HAL <code>_mips_xfermem_fn </code> interface.</description>
+		</func>
+		<epilogue>
+		struct TFTP_tag {
+			const char* host;
+			const char* filename;
+			uint32_t port;
+		};
+		</epilogue>
+	</interface>
+</module>

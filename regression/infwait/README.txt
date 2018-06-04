@@ -1,0 +1,1 @@
+This test checks that infinite waits work without a timer task.

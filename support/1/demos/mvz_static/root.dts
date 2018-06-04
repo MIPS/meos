@@ -1,0 +1,39 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "platform";
+
+	/* In this example, we are using a separate hypervisor DT.
+	 * Alternatively, the same information could be placed in your
+	 * root platform DT along side device definitions, etc.
+	 */
+
+	hypervisor {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "mti,mvz";
+		mti,root-tlbs = <8>;
+		mti,guest-tlbs = <8>;
+		mti,hypcall = "MVZ_UHIHLT";
+		guest@0 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "mti,mvz-guest";
+			ranges = <0 0x86000000 0x40000>;
+		};
+		guest@1 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "mti,mvz-guest";
+			ranges = <0 0x86040000 0x40000>;
+		};
+		guest@2 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "mti,mvz-guest";
+			ranges = <0 0x86080000 0x40000>;
+		};
+	};
+};

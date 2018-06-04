@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="MVZ" prefix="MVZ" modtype="Functional">
+	<description>The MIPS Embedded Hypervisor.</description>
+	<imports>lists</imports>
+	<interface>
+		<prologue>
+		</prologue>
+		<include lib="N">MEOS.h</include>
+		<typedef vis="anonymous"><c>struct MVZ_tag MVZ_T</c>
+			Hypervisor static data.
+		</typedef>
+		<typedef vis="anonymous"><c>struct MVZ_guest_tag MVZ_GUEST_T</c>
+			Per guest data.
+		</typedef>
+		<typedef vis="anonymous"><c>struct MVZ_vregs_tag MVZ_VREGS_T</c>
+			Virtual register descriptor.
+		</typedef>
+		<typedef vis="anonymous"><c>struct MVZ_virtio_tag MVZ_VIRTIO_T</c>
+			VirtIO common device.
+		</typedef>
+		<typedef><c>void MVZ_STARTFUNC_T(MVZ_GUEST_T *)</c>
+			Start function, called on cold start of a guest and upon soft restart. If restart is not possible, should handle appropriately.
+		</typedef>
+		<typedef><c>int32_t MVZ_STOPFUNC_T(MVZ_GUEST_T *, int32_t exitcode)</c>
+			Stop function, called when a guest terminates. <code>exitcode</code> contains a status code. Returns 0 if the guest should be descheduled, otherwise it will be assumed to have been restarted.
+		</typedef>
+		<typedef><c>int MVZ_XFERFUNC_T(void *address, void* buffer, int size, int n, void *priv)</c>
+			Generic read/write function.
+		</typedef>
+		<typedef><c>void MVZ_BREAK_T(MVZ_GUEST_T *, void *priv)</c>
+			BREAK handler.
+		</typedef>
+		<func name="MVZ_gstrlen">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gvaddr">Guest address of string.</arg>
+			<return type="size_t">Length of string at address.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Walks the string at <code>gvaddr</code> in
+			guest memory to determine it's length.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_loadELF">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="MVZ_XFERFUNC_T" name="read">Read function.</arg>
+			<arg type="void *" name="priv">Private data for read function.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Reads an ELF file using <code>read</code>
+			and writes it into the memory of <code>guest</code>.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_readGP">
+			<arg type="void *" name="paddr">GPA to read from.</arg>
+			<arg type="void *" name="buf">RVA to write to.</arg>
+			<arg type="int" name="size">Size of element to read.</arg>
+			<arg type="int" name="n">Number of elements to read.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to read from.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>(buf != NULL) &amp;&amp; (priv != NULL)</precondition>
+			</limitations>
+			<description>Read from uncached guest memory. Returns the amount of data read.
+			</description>
+		</func>
+		<func name="MVZ_readGPC">
+			<arg type="void *" name="paddr">GPA to read from.</arg>
+			<arg type="void *" name="buf">RVA to write to.</arg>
+			<arg type="int" name="size">Size of element to read.</arg>
+			<arg type="int" name="n">Number of elements to read.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to read from.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>(buf != NULL) &amp;&amp; (priv != NULL)</precondition>
+			</limitations>
+			<description>Read from cached guest memory. Returns the amount of data read.
+			</description>
+		</func>
+		<func name="MVZ_readGV">
+			<arg type="void *" name="paddr">GVA to read from.</arg>
+			<arg type="void *" name="buf">RVA to write to.</arg>
+			<arg type="int" name="size">Size of element to read.</arg>
+			<arg type="int" name="n">Number of elements to read.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to read from.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>(buf != NULL) &amp;&amp; (priv != NULL)</precondition>
+			</limitations>
+			<description>Read from guest memory, using CCAs from TLB. Returns the amount of data read.
+			</description>
+		</func>
+		<func name="MVZ_restart">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Reboot the guest if possible.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_writeGP">
+			<arg type="void *" name="paddr">GPA to write to.</arg>
+			<arg type="void *" name="buf">RVA to read from.</arg>
+			<arg type="int" name="size">Size of element to write.</arg>
+			<arg type="int" name="n">Number of elements to write.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to write to.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>(buf != NULL) &amp;&amp; (priv != NULL)</precondition>
+			</limitations>
+			<description>Write to guest memory. Returns the amount of data written.
+			</description>
+		</func>
+		<func name="MVZ_writeGPC">
+			<arg type="void *" name="paddr">GPA to write to.</arg>
+			<arg type="void *" name="buf">RVA to read from.</arg>
+			<arg type="int" name="size">Size of element to write.</arg>
+			<arg type="int" name="n">Number of elements to write.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to write to.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>(buf != NULL) &amp;&amp; (priv != NULL)</precondition>
+			</limitations>
+			<description>Write to cached guest memory. Returns the amount of data written.
+			</description>
+		</func>
+		<func name="MVZ_writeGV">
+			<arg type="void *" name="paddr">GVA to write to.</arg>
+			<arg type="void *" name="buf">RVA to read from.</arg>
+			<arg type="int" name="size">Size of element to write.</arg>
+			<arg type="int" name="n">Number of elements to write.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to write to.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>(buf != NULL) &amp;&amp; (priv != NULL)</precondition>
+			</limitations>
+			<description>Write to guest memory, using CCAs from TLB. Returns the amount of data written.
+			</description>
+		</func>
+		<func name="MVZ_zeroGP">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gpaddr">GPA to start zeroing.</arg>
+			<arg type="size_t" name="amount">Number of bytes to zero.</arg>
+			<return type="size_t">Number of bytes zeroed.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Zeroes <code>amount</code> bytes of uncached guest
+			memory at <code>gpaddr</code>.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_zeroGPC">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gpaddr">GPA to start zeroing.</arg>
+			<arg type="size_t" name="amount">Number of bytes to zero.</arg>
+			<return type="size_t">Number of bytes zeroed.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Zeroes <code>amount</code> bytes of cached guest
+			memory at <code>gpaddr</code>.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_zeroGV">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gvaddr">GVA to start zeroing.</arg>
+			<arg type="size_t" name="amount">Number of bytes to zero.</arg>
+			<return type="size_t">Number of bytes zeroed.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Zeroes <code>amount</code> bytes of guest
+			memory at <code>gvaddr</code>, using CCAs from TLB.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+	<epilogue>
+		#ifndef	CONFIG_ARCH_MIPS_VZ
+		#error ARCH_MIPS_VZ must be enabled in your MEOS configuration!
+		#endif
+
+void MVZ_hypervise(MVZ_T * mvz, KRN_ISRFUNC_T * hypcall);
+void MVZ_UHIHLT(int sigNum, struct gpctx *c);
+void MVZ_splitTLBs(size_t root);
+void MVZ_map(uint32_t *index, uintptr_t paddr, size_t length,
+	     MVZ_GUEST_T * guest, uintptr_t gpaddr);
+void MVZ_startGuest(MVZ_GUEST_T * guest, KRN_PRIORITY_T priority,
+		    const char *guestname);
+void MVZ_initGuest(MVZ_GUEST_T * guest, uint32_t gid, MVZ_STARTFUNC_T *start);
+void MVZ_intMap(IRQ_DESC_T * irq, MVZ_GUEST_T *guest);
+uintptr_t MVZ_gv2gp(MVZ_GUEST_T * guest, uintptr_t gva, uintptr_t * glen,
+			   uint32_t * cca);
+void MVZ_upInt(MVZ_GUEST_T *gt, uint32_t i);
+void MVZ_downInt(MVZ_GUEST_T *gt, uint32_t i);
+void MVZ_xfer(MVZ_XFERFUNC_T *r, void *rp, uintptr_t ro, size_t size, MVZ_XFERFUNC_T *w, void *wp, uintptr_t wo);
+void MVZ_addRegs(MVZ_GUEST_T * guest, MVZ_VREGS_T * regs);
+void MVZ_debugGuest(MVZ_GUEST_T *guest, MVZ_BREAK_T *debugger, void *debugPriv);
+void MVZ_EXLProtect(MVZ_GUEST_T * gt);
+void MVZ_EXLUnprotect(MVZ_GUEST_T * gt);
+reg_t MVZ_fixDebug(MVZ_GUEST_T * gt);
+
+struct MVZ_tag {
+	PARAHEAD
+	struct vzrootctx protoroot;
+	struct vzguestctxmax protoguest;
+	void (*hyper)(int SigNum, struct gpctx *c);
+	size_t ntlbs;
+	size_t ngtlbs;
+	uint8_t maxgid;
+	uint32_t maxpm;
+	IRQ_DESC_T gexc;
+	IRQ_DESC_T tlexc;
+	IRQ_DESC_T tsexc;
+	LST_T nets;
+	uint32_t tlbSafe;
+	PARATAIL
+};
+
+extern MVZ_T *_MVZ;
+
+struct  MVZ_guest_tag {
+	struct KRN_task_tag	task;
+	PARAHEAD
+	uint8_t gid;
+	struct vzrootctx root;
+	struct vzguestctxmax guest;
+	struct vztlbctxmax tlbs;
+
+	reg_t danceExc;
+	reg_t danceStep;
+	uint8_t danceInstr[12];
+	uintptr_t danceSecond;
+	uintptr_t danceThird;
+
+	reg_t intMask;
+	LST_T vregs;
+	MVZ_STARTFUNC_T *start;
+	MVZ_STOPFUNC_T *stop;
+	size_t argc;
+	char **argv;
+	MVZ_BREAK_T *debugger;
+	void *debugPriv;
+	PARATAIL
+};
+
+struct MVZ_vregs_tag {
+	LST_LINK;
+	PARAHEAD;
+	MVZ_GUEST_T *guest;
+	uintptr_t start;
+	uintptr_t stop;
+	MVZ_XFERFUNC_T *read;
+	MVZ_XFERFUNC_T *write;
+	void *priv;
+	PARATAIL;
+};
+
+static inline void MVZ_exit(MVZ_GUEST_T *guest, int32_t exitcode)
+{
+	if (!guest->stop(guest, exitcode))
+		KRN_removeTask((KRN_TASK_T*)guest);
+}
+
+struct RSP_tag;
+
+typedef void (RSP_WRITEFUNC_T) (struct RSP_tag * rsp, uint8_t byte);
+typedef uint8_t(RSP_READFUNC_T) (struct RSP_tag * rsp);
+typedef void(RSP_INJFUNC_T) (struct RSP_tag * rsp, uintptr_t addr);
+
+typedef struct RSP_tag {
+	RSP_WRITEFUNC_T *writeChar;
+	RSP_READFUNC_T *readChar;
+	uint8_t writeCheckSum;
+	uint8_t readCheckSum;
+	char startChar;
+	size_t writeOffset;
+	sreg_t writeLen;
+	int (*readMem)(void *, void *, int, int, void*);
+	void *readPriv;
+	int (*writeMem)(void *, void *, int, int, void*);
+	void *writePriv;
+	uintptr_t stepAddr;
+	RSP_INJFUNC_T *inject;
+	uintptr_t *breakTable;
+	size_t nBreaks;
+	reg_t broken;
+} RSP_T;
+
+void RSP_init(RSP_T * rsp,
+	      RSP_READFUNC_T * readChar, RSP_WRITEFUNC_T * writeChar,
+	      uintptr_t * breakTable, size_t nBreaks);
+void RSP_setRW(RSP_T *rsp, int (*r)(void *, void *, int, int, void*), void *rp, int (*w)(void *, void *, int, int, void*), void *wp);
+void RSP_loop(RSP_T * rsp, int sig, struct gpctx *ctx);
+void RSP_break(RSP_T * rsp, int sig);
+	</epilogue>
+	</interface>
+</module>

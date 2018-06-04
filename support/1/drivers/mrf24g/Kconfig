@@ -1,0 +1,5 @@
+config DRIVER_MRF24G
+depends on LWIP
+bool "MRF24G"
+help
+	MRF24G wifi driver.

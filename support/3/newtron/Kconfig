@@ -1,0 +1,20 @@
+menuconfig NEWTRON
+bool "Newtron Filesystem"
+depends on MASS
+default n
+help
+	The Newtron filesystem from Mynewt.
+
+config NEWTRON_SRC
+string "Newtron URL"
+depends on NEWTRON
+default "https://github.com/apache/incubator-mynewt-core/archive/"
+help
+	URL stem to download Newtron from. Must include trailing /.
+
+config NEWTRON_AREA_MAX
+int "Maxmimum number flash areas supported"
+depends on NEWTRON
+default 8
+help
+	Specifies the number of flash areas supported by Newtron.

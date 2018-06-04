@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="timisr" prefix="TIMISR" modtype="System">
+	<description>Emulates the deprecated timer ISR mechanism.</description>
+	<imports>kernel</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<typedef><c>int32_t KRN_TIMERISRFUNC_T(void)</c> Timer ISR function.
+		</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			<tab/>DQ_LINK;<nl/>
+			<parahead/>
+			<tab/>KRN_TIMERISRFUNC_T *timisr;<nl/>
+			<paratail/>
+		} KRN_TIMERISR_T</c>Timer ISR descriptor.</typedef>
+		<typedef><c>struct {<nl/>
+			<parahead/>
+			<tab/>DQ_T timerISRQ;<nl/>
+			<tab/>KRN_TIMER_T timer;<nl/>
+			<tab/>uint32_t rearm;<nl/>
+			<paratail/>
+		} TIMISR_T</c>TIMISR control structure.</typedef>
+		<func name="KRN_activateTimerISR">
+			<arg type="KRN_TIMERISR_T *" name="isr" traceable="Y">Pointer to timer
+			ISR descriptor.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(isr != NULL)</precondition>
+            </limitations>
+			<description>Activates a timer ISR. The ISR must first
+			be initialised by <code>KRN_initTimerISR</code>.
+			<par/>
+			Timer ISRs are handled differently from generic ISRs
+			(installed using <code>IRQ_route</code>). This is
+			because multiple timer ISRs may be "daisy-chained" onto
+			the timer tick interrupt.
+			<par/>
+			Once activated,	timer ISR functions will be executed in
+			reverse order of activation on every scheduler clock
+			tick until deactivated.
+			<par/>
+			A Timer ISR executes with interrupts disabled so it
+			behaves like a repetitive, high priority, non
+			pre-emptible task.
+			<par/>
+			The timer ISR's return value is used to influence the
+			scheduler. If a timer ISR returns <code>non-zero</code>,
+			then a scheduling event is guaranteed after the timer
+			tick processing is complete. If the ISR returns
+			<code>zero</code> then the scheduler is unaffected
+			(although a scheduler event may still occur as a result
+			of other timed processes).
+			<par/>
+			Take care to keep timer ISRs short and non-blocking.
+			Most MEOS kernel functions are designed for use in
+			background mode only - they must not be used inside ISRs.
+			The descriptions of those functions which
+			<emph>can</emph> be used in ISRs state this explicitly.
+			</description>
+		</func>
+		<func name="KRN_deactivateTimerISR">
+			<arg type="KRN_TIMERISR_T *" name="isr" traceable="Y">Pointer to timer
+			ISR descriptor.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(isr != NULL)</precondition>
+            </limitations>
+			<description>Deactivates a timer ISR. The ISR may be
+			re-activated later if required. It need not be
+			re-initialised.</description>
+		</func>
+		<func name="KRN_initTimerISR">
+			<arg type="KRN_TIMERISR_T *" name="isr" traceable="Y">Pointer to timer
+				ISR descriptor.</arg>
+			<arg type="KRN_TIMERISRFUNC_T *" name="timerISRFunc">
+				Pointer to timer ISR function.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((isr != NULL) &amp;&amp; (timerISRFunc != NULL))</precondition>
+            </limitations>
+			<description>Creates a timer ISR object by associating a
+			function with a timer ISR descriptor.
+			<par/>
+			Timer ISRs must be activated before they become
+			effective.
+			<par/>
+			See the description of <code>KRN_activateTimerISR</code>
+			for more details about timer ISR functions</description>
+		</func>
+		<func name = "TIMISR_init">
+			<arg type="TIMISR_T *" name="timisr" traceable="Y">Pointer to TIMISR control structure.</arg>
+			<arg type="uint32_t" name="rearm">Rearm interval in microseconds.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((timisr != NULL) &amp;&amp; (rearm &gt; 0))</precondition>
+			</limitations>
+			<description>Initialise the timer ISR emulation system.</description>
+		</func>
+	</interface>
+</module>

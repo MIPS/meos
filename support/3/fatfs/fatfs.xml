@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="FatFs" prefix="FatFs" modtype="Special">
+	<description>FatFs - see http://elm-chan.org/fsw/ff/00index_e.html. <code>MASS</code> compatible devices defined in the Devicetree will be mapped to FatFs drive numbers in order of appearance. All libraries and include paths should be set up by meos-config, simply use as usual.</description>
+</module>

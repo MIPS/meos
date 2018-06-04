@@ -1,0 +1,648 @@
+# sed -e '$a#endif' -e '1i#ifndef CONFIG_H\n#define CONFIG_H' -e 's/#.*//' -e '/^$/ d' -e 's/\([^=]*\)=y/#define \1/g'  < .config
+
+mainmenu "MEOS 3.0 Configuration"
+
+config WORK_DIR
+	string
+	option env="WORK_DIR"
+
+source "$WORK_DIR/boards/Kconfig"
+
+menu "Toolchain configuration"
+
+	config EXTRA_FLAGS
+	string "Extra build flags"
+	default "-Werror -Wall" if QUICK_DEBUG || QUICK_RELEASE
+	help
+		Specify extra flags that will be passed to the compiler/linker, after
+		those generated internally by MEOS. This can be used to select compiler
+		tuning parameters, etc.
+
+	config BUILD_O
+	int "Optimisation level"
+	range 0 3
+	default 3 if QUICK_RELEASE
+	default 0
+	help
+		Select the optimisation level. This is toolchain dependent, but
+		typically ranges from 0 (none) to 3 (full).
+
+	config BUILD_G
+	int "Debug level"
+	range 0 3
+	default 3
+	default 0 if QUICK_RELEASE
+	help
+		Select the debug level. This is toolchain dependent, but typically
+		ranges from 0 (none) to 3 (full).
+endmenu
+
+menu "Debugging facilities"
+	config DEBUG_DIAGNOSTICS
+	bool "Basic diagnostics"
+	default n if QUICK_RELEASE
+	default y
+	help
+		Selects whether DBG_assert(), DBG_insist(), and DBG_logF() calls are
+		enabled.
+
+	config DEBUG_STACK_CHECKING
+	bool "Stack checking"
+	default n if QUICK_RELEASE
+	default y
+	help
+		Selects whether task stack extents are tracked and checked.
+
+	config DEBUG_POSTMORTEM
+	bool "Post-mortem diagnostics"
+	default y if QUICK_DEBUG
+	default n
+	help
+		Selects whether MEOS will provide register dumps, stack traces, and, if
+		enabled, software trace buffer dumps, on unhandled interrupts and
+		exceptions.
+
+	config DEBUG_REG_DUMP
+	bool "Task context decoder"
+	default y if QUICK_DEBUG
+	default y if DEBUG_POSTMORTERM
+	default n
+	help
+		The task context decoder can be used to dump a human readable decoding
+		of a task context to the log output. This comes at a size penalty, so
+		should be disabled for release.
+
+	config DEBUG_BT_DUMP
+	bool "Backtrace decoder"
+	default y if QUICK_DEBUG || DEBUG_POSTMORTERM
+	default n
+	depends on DEBUG_HAVE_BT
+	help
+		The backtrace decoder can be used to dump a human readable decoding of
+		activation records to print a backtrace the log output. This comes at a
+		size penalty, so should be disabled for release.
+
+	config DEBUG_IMPEXP_LOGGING
+	bool "Import/export message logging"
+	default n
+	depends on FEATURE_IMPEXP
+	help
+		DBG_logF() the messages used to implement import/export.
+
+	config DEBUG_TRACE
+		bool
+		default n
+		help
+			Internal variable used by the build system.
+
+	config DEBUG_TRACE_SOFT
+		bool
+		default n
+		help
+			Internal variable used by the build system.
+
+	config DEBUG_TRACE_SOFT_DUMP
+		bool "Soft trace decoder"
+		default y
+		depends on DEBUG_TRACE_SOFT
+		help
+			The soft trace decoder can be used to dump a human readable decoding
+			of the soft trace buffer to the log output. This comes at a size
+			penalty, so should be disabled for release.
+
+	config DEBUG_TRACE_HARD
+		bool
+		default n
+		help
+			Internal variable used by the build system.
+
+	config DEBUG_TRACE_LOG
+	bool "Enable DBG_logT()"
+	select DEBUG_TRACE
+	default y
+	help
+		Emit trace data via DBG_logT().
+
+	config DEBUG_TRACE_LOG_SOFT
+		bool "Enable DBG_logT() via software trace"
+		depends on DEBUG_TRACE_LOG
+		select DEBUG_TRACE_SOFT
+		default y
+		help
+			Emit trace data via the software trace buffers.
+
+	config DEBUG_TRACE_LOG_HARD
+		bool "Enable DBG_logT() via hardware trace"
+		depends on DEBUG_TRACE_LOG
+		select DEBUG_TRACE_HARD
+		default n
+		help
+			Emit trace data via the architecture specific trace mechanism.
+
+	menuconfig DEBUG_WRAPPER
+		bool "Wrapper based advanced diagnostics"
+		default y if QUICK_DEBUG
+		default n
+		help
+			Selects whether the MEOS library is wrapped with per function
+			auto-generated fine grained diagnostics. This comes at a performance
+			and	size penalty, so should be disabled for release.
+
+		if DEBUG_WRAPPER
+
+		config DEBUG_DONT_WRAP
+		string "Exclude symbols"
+		help
+			MEOS symbols to exclude from the wrapping process. This overrides any
+			option below.
+
+		config DEBUG_DIAGNOSTICS_PREPOST
+		bool "Runtime pre/post-condition checks"
+		default y if QUICK_DEBUG
+		default n
+		depends on DEBUG_DIAGNOSTICS
+		help
+			Generates pre/post-condition checks.
+
+		config DEBUG_EXTRA_PARANOIA
+		bool "Check paranoia around API calls"
+		depends on DEBUG_PARANOIA
+		select DEBUG_STACK_CHECKING
+		default n
+		help
+			Selects whether MEOS data integrity checking is enabled in the
+			wrapper. This checks the integrity of all objects registered with
+			MEOS on entry and exit to wrapped API calls.
+
+		config DEBUG_TRACE_API
+		bool "Trace API calls"
+		select DEBUG_TRACE
+		default y
+		help
+			Emit trace data upon entry/exit to MEOS functions.
+
+		config DEBUG_TRACE_API_SOFT
+			bool "Trace API via software trace"
+			depends on DEBUG_TRACE_API
+			select DEBUG_TRACE_SOFT
+			default y if QUICK_DEBUG
+			default n
+			help
+				Emit trace data via the software trace buffers.
+
+		config DEBUG_TRACE_API_HARD
+			bool "Trace API via hardware trace"
+			depends on DEBUG_TRACE_API
+			select DEBUG_TRACE_HARD
+			default y
+			help
+				Emit trace data via the architecture specific trace mechanism.
+
+		config DEBUG_ALWAYS_TRACE
+			string "Functions to always trace"
+			depends on DEBUG_TRACE_API
+			default ""
+			help
+				Always trace these functions, regardless of options below.
+
+		config DEBUG_PER_OBJECT_TRACE
+			bool "Only trace specified MEOS objects"
+			depends on DEBUG_TRACE_API
+			default n
+			help
+				Only trace objects specified by calls to DBG_tronObject().
+				Requires a DBG_PER_OBJECT_POOL to have been declared in the
+				user source code.
+
+		config DEBUG_WRAP_CTX
+		bool "Wrap CTX"
+		default y
+		help
+			Selects whether the CTX module should be wrapped.
+
+		config DEBUG_WRAP_DQ
+		bool "Wrap DQ"
+		default y
+		help
+			Selects whether the DQ module should be wrapped.
+
+		config DEBUG_WRAP_IPM
+		bool "Wrap IPM"
+		default y
+		help
+			Selects whether the IPM module should be wrapped.
+
+		config DEBUG_WRAP_IRQ
+		bool "Wrap IRQ"
+		default y
+		help
+			Selects whether the IRQ module should be wrapped.
+
+		config DEBUG_WRAP_KRN
+		bool "Wrap KRN"
+		default y
+		help
+			Selects whether the KRN module should be wrapped.
+
+		config DEBUG_WRAP_LST
+		bool "Wrap LST"
+		default y
+		help
+			Selects whether the LST module should be wrapped.
+
+		config DEBUG_WRAP_MEM
+		bool "Wrap MEM"
+		default y
+		help
+			Selects whether the MEM module should be wrapped.
+
+		config DEBUG_WRAP_RING
+		bool "Wrap RING"
+		default y
+		help
+			Selects whether the RING module should be wrapped.
+
+		config DEBUG_WRAP_TMR
+		bool "Wrap TMR"
+		default y
+		help
+			Selects whether the TMR module should be wrapped.
+
+		config DEBUG_WRAP_TRE
+		bool "Wrap TRE"
+		default y
+		help
+			Selects whether the TRE module should be wrapped.
+
+		endif
+
+	config DEBUG_TRACE_ISR
+	bool "Trace ISR entry"
+	select DEBUG_TRACE
+	default y if QUICK_DEBUG
+	default n
+	help
+		Selects whether exceptions, interrupts and scheduler operations are
+		traced.
+
+	config DEBUG_TRACE_ISR_HARD
+	bool "Trace ISR entry via hardware trace"
+	depends on DEBUG_TRACE_ISR
+	select DEBUG_TRACE_HARD
+	default y
+	help
+		Selects whether exceptions, interrupts and scheduler operations are
+		traced via the architecture specific trace mechanism. This option
+		may have a deleterious effect on performance.
+
+	config DEBUG_TRACE_ISR_SOFT
+	bool "Trace ISR entry via software trace"
+	depends on DEBUG_TRACE_ISR
+	select DEBUG_TRACE_SOFT
+	default y if QUICK_DEBUG
+	default n
+	help
+		Selects whether exceptions, interrupts and scheduler operations are
+		traced via the software trace buffers. This option may have a
+		deleterious effect on performance.
+
+	config DEBUG_TRACE_IPL
+	bool "Trace IPL manipulation"
+	select DEBUG_TRACE
+	default y if QUICK_DEBUG
+	help
+		Selects whether IPL raise/restore operations are traced.
+
+	config DEBUG_TRACE_IPL_HARD
+	bool "Trace IPL manipulation via hardware trace"
+	depends on DEBUG_TRACE_IPL
+	select DEBUG_TRACE_HARD
+	default y
+	help
+		Selects whether IPL raise/restore operations are traced via the
+		architecture specific trace mechanism. This option may have a
+		deleterious effect on performance.
+
+	config DEBUG_TRACE_IPL_SOFT
+	bool "Trace IPL manipulation via software trace"
+	depends on DEBUG_TRACE_IPL
+	select DEBUG_TRACE_SOFT
+	default y if QUICK_DEBUG
+	default n
+	help
+		Selects whether IPL raise/restore operations are traced via the
+		software trace buffers. This option may have a deleterious effect on
+		performance.
+
+	config DEBUG_TRACE_CTXSW
+	bool "Trace context switches"
+	select DEBUG_TRACE
+	default y if QUICK_DEBUG
+	help
+		Selects whether context switches are traced.
+
+	config DEBUG_TRACE_CTXSW_HARD
+	bool "Trace context switch via hardware trace"
+	depends on DEBUG_TRACE_CTXSW
+	select DEBUG_TRACE_HARD
+	default y
+	help
+		Selects whether context switches are traced via the architecture
+		specific trace mechanism. This option may have a deleterious effect
+		on performance.
+
+	config DEBUG_TRACE_CTXSW_BT_HARD
+	int "Task backtrace depth on switch via hardware trace"
+	depends on DEBUG_TRACE_CTXSW_HARD
+	depends on DEBUG_HAVE_BT
+	default 0
+	help
+		Selects the depth to backtrace the originating task on context
+		switch, via the architecture specific trace mechanism. 0 disables, 1
+		provides the PC of the task, 2+ provide return addresses. This
+		option will have a deleterious effect on performance.
+
+	config DEBUG_TRACE_CTXSW_SOFT
+	bool "Trace context switch via software trace"
+	depends on DEBUG_TRACE_CTXSW
+	select DEBUG_TRACE_SOFT
+	default y
+	help
+		Selects whether context switches are traced via the software trace
+		buffers. This option may have a deleterious effect on performance.
+
+	config DEBUG_TRACE_CTXSW_BT_SOFT
+	int "Task backtrace depth on switch via software trace"
+	depends on DEBUG_TRACE_CTXSW_SOFT
+	depends on DEBUG_HAVE_BT
+	default 0
+	help
+		Selects the depth to backtrace the originating task on context
+		switch, via the software trace buffers. 0 disables, 1 provides the PC
+		of the task, 2+ provide return addresses. This option will have a
+		deleterious effect on performance.
+
+	config DEBUG_TRACE_EXTRA
+	bool "Trace extra context"
+	depends on DEBUG_TRACE_SOFT
+	depends on DEBUG_HAVE_BT
+	default y if QUICK_DEBUG
+	default n
+	help
+		Store extra context on tracing. This includes the PC where the event
+		occurs and a platform specific datum.
+
+	config DEBUG_PROFILING
+	bool "Profiling"
+	default n
+	help
+		Selects whether MEOS profiling support is enabled.
+
+	config DEBUG_PROFILING_DUMP
+	bool "Profiling decoder"
+	default y
+	depends on DEBUG_PROFILING
+	help
+		The profiling decoder can be used to dump a human readable decoding
+		of the soft trace buffer to the log output. This comes at a size
+		penalty, so should be disabled for release.
+
+	config DEBUG_TASK_PERF
+	bool "Per-task performance counters"
+	default n
+	help
+		Selects whether MEOS per-task performance counting support is enabled.
+
+	config DEBUG_PARANOIA
+	bool "Paranoia"
+	default y if QUICK_DEBUG
+	default n
+	depends on DEBUG_HAVE_BT
+	help
+		Selects whether MEOS data integrity checking is enabled. This checks the
+		integrity of all objects registered with MEOS at strategic points.
+
+endmenu
+
+menu "Kernel features"
+
+	config FEATURE_FLOAT
+	bool
+	help
+		Internal variable used by the build system.
+
+	config FEATURE_IPI_AVAILABLE
+	bool
+	help
+		Internal variable used by the build system.
+
+	config FEATURE_MAX_PRIORITIES
+	int "Maximum number of task priorities"
+	range 0 4096
+	default 256
+	help
+		The maximum number of priorities MEOS should reserve space
+		to support. Fulfils the role of KRN_MAX_PRIORITY_LEVELS from
+		previous versions of MEOS.
+
+	config FEATURE_MAX_PROCESSORS
+	int "Maximum number of processors"
+	range 0 32
+	default 4
+	help
+		The maximum number of processors MEOS should reserve space
+		to support. Fulfils the role of KRN_NUMHWTHREADS from previous
+		versions of MEOS.
+
+	config FEATURE_IPI
+	bool "Interprocessor interrupts"
+	depends on FEATURE_IPI_AVAILABLE
+	default y if FEATURE_MAX_PROCESSORS != 1
+	default n
+	help
+		Send interrupts between processors in the same system.
+
+	config FEATURE_VRINGS
+	bool "Virtio Vrings"
+	default y
+	help
+		Support communication via a Virtio Vring compatible protocol.
+
+	config FEATURE_IMPEXP
+	bool "Import/export"
+	depends on (FEATURE_VRINGS && FEATURE_IPI) || ARCH_LINUX
+	default y
+	help
+		Import/export provides a mechanism for synchronisation primitives to be
+		shared between processors.
+
+endmenu
+
+choice
+	prompt "Target architecture"
+	default ARCH_LINUX
+	help
+		Selects the architecture for MEOS to target.
+
+	config ARCH_LINUX
+	bool "Linux"
+	help
+		Target Linux userspace. Useful for testing and interfacing a MEOS
+		thread with a Linux thread.
+
+	config ARCH_MIPS
+	bool "MIPS"
+	help
+		Target bare metal MIPS.
+
+endchoice
+
+source "$WORK_DIR/targets/linux/Kconfig"
+source "$WORK_DIR/targets/mips/Kconfig"
+source "$WORK_DIR/regression/Kconfig"
+
+menu "Supported packages"
+source "$WORK_DIR/support/Kconfig"
+endmenu
+
+menu "Build tools"
+
+	config TOOLS_INDENT_SRC
+	string "GNU indent URL"
+	default "http://www.mirrorservice.org/sites/ftp.gnu.org/gnu/indent/"
+	help
+		URL stem to download indent from. Must include trailing /.
+
+	config TOOLS_XML2_SRC
+	string "libxml2 URL"
+	default "http://xmlsoft.org/sources/"
+	help
+		URL stem to download libxml2 from. Must include trailing /.
+
+	config TOOLS_XSLTPROC_SRC
+	string "libxslt URL"
+	default "http://xmlsoft.org/sources/"
+	help
+		URL stem to download libxslt from. Must include trailing /.
+
+	config TOOLS_PYGMENTS_SRC
+	string "Pygments URL"
+	default "https://pypi.python.org/packages/source/P/Pygments/"
+	help
+		URL stem to download Pygments from. Must include trailing /.
+
+	config TOOLS_DOCUTILS_SRC
+	string "docutils URL"
+	default "https://pypi.python.org/packages/source/d/docutils/"
+	help
+		URL stem to download docutils from. Must include trailing /.
+
+	config TOOLS_JRE_BIN
+	string "Oracle JRE"
+	default "http://javadl.sun.com/webapps/download/"
+	help
+		URL stem to download Java Runtime *binary* from. Must include trailing /.
+
+	config TOOLS_JRE_BIN_FN
+	string "Oracle JRE filename"
+	default "AutoDL?BundleId=80803"
+	help
+		File name of Java Runtime *binary* to download.
+
+	config TOOLS_FOP_BIN
+	string "Apache fop URL"
+	default "http://www.mirrorservice.org/sites/ftp.apache.org/xmlgraphics/fop/binaries/"
+	help
+		URL stem to download fop *binary* from. Must include trailing /.
+
+	config TOOLS_BZ2_SRC
+	string "bzip2 URL"
+	default "http://www.bzip.org/1.0.6/"
+	help
+		URL stem to download bzip2 from. Must include trailing /.
+
+	config TOOLS_GPERF_SRC
+	string "GNU gpref URL"
+	default "http://www.mirrorservice.org/sites/ftp.gnu.org/gnu/gperf/"
+	help
+		URL stem to download gperf from. Must include trailing /.
+
+	config TOOLS_FLEX_SRC
+	string "flex URL"
+	default "https://github.com/westes/flex/releases/download/v2.6.1/"
+	help
+		URL stem to download flex from. Must include trailing /.
+
+	config TOOLS_BISON_SRC
+	string "GNU bison URL"
+	default "http://www.mirrorservice.org/sites/ftp.gnu.org/gnu/bison/"
+	help
+		URL stem to download bison from. Must include trailing /.
+
+	config TOOLS_NCURSES_SRC
+	string "GNU ncurses URL"
+	default "http://www.mirrorservice.org/sites/ftp.gnu.org/gnu/ncurses/"
+	help
+		URL stem to download ncurses from. Must include trailing /.
+
+	config TOOLS_KCONFIG_SRC
+	string "kconfig-frontends URL"
+	default "http://ymorin.is-a-geek.org/download/kconfig-frontends/"
+	help
+		URL stem to download kconfig-frontends from. Must include trailing /.
+
+	config TOOLS_DTD_SRC
+	string "xhtml1 DTD URL"
+	default "http://www.w3.org/TR/xhtml1/"
+	help
+		URL stem to download xhtml1 DTD from. Must include trailing /.
+
+	config TOOLS_GNUPLOT_SRC
+	string "gnuplot URL"
+	default "http://downloads.sourceforge.net/project/gnuplot/gnuplot/4.6.4/"
+	help
+		URL stem to download gnuplot from. Must include trailing /.
+
+	config TOOLS_DTC_SRC
+	string "DTC URL"
+	default "https://git.kernel.org/cgit/utils/dtc/dtc.git/snapshot/"
+	help
+		URL stem to download the Device Tree Compiler from. Must include trailing /.
+
+	config TOOLS_P32PS_SRC
+	string "PIC32 part support URL"
+	default "https://github.com/jasonkajita/pic32-part-support/archive/"
+	help
+		URL stem to download PIC32 part support from. Must include trailing /.
+
+	menu "Regression suite tool control"
+
+		config QUICK_DEBUG
+			bool "Test option 1"
+			help
+				Internal helper for test system. Not for user use.
+
+		config QUICK_RELEASE
+			bool "Test option 2"
+			help
+				Internal helper for test system. Not for user use.
+
+		config QUICK_SIM
+			bool "Test option 3"
+			help
+				Internal helper for test system. Not for user use.
+
+		config QUICK_PROBE
+			bool "Test option 4"
+			help
+				Internal helper for test system. Not for user use.
+
+		config QUICK_MT
+			bool "Test option 5"
+			help
+				Internal helper for test system. Not for user use.
+
+	endmenu
+
+
+endmenu

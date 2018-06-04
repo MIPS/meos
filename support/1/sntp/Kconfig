@@ -1,0 +1,23 @@
+menuconfig SNTP
+bool "SNTP client"
+depends on SRTC
+depends on IP
+default n
+help
+	Build a Simple Network Time Protocol client.
+
+if SNTP
+
+config SNTP_DEFAULT
+string "Default SNTP server"
+default "217.114.59.66" #0.uk.pool.ntp.org
+help
+	IP address of NTP server. Defaults to 0.uk.pool.ntp.org
+
+config SNTP_TIMEOUT
+int "SNTP timeout"
+default 5000
+help
+	Number of milliseconds to wait for a response.
+
+endif

@@ -1,0 +1,17 @@
+menuconfig TFTP
+bool "TFTP client"
+depends on SRTC
+depends on IP
+default n
+help
+	Build a Trivial File Transfer Protocol client.
+
+if TFTP
+
+config TFTP_TIMEOUT
+int "TFTP timeout"
+default 5000
+help
+	Number of milliseconds to wait for a response.
+
+endif

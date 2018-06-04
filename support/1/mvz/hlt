@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+####(C)2016###############################################################
+#
+# Copyright (C) 2016 MIPS Tech, LLC
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# 3. Neither the name of the copyright holder nor the names of its
+# contributors may be used to endorse or promote products derived from this
+# software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+####(C)2016###############################################################
+#
+#          File:	$File: //meta/fw/meos2/DEV/LISA.PARRATT/buildsys/rebanner.py $
+# Revision date:	$Date: 2015/06/02 $
+#   Description:	Tool to automatically generate hyperlib bindings
+#
+##########################################################################
+
+import argparse
+import subprocess
+import re
+
+# Parse args
+parser = argparse.ArgumentParser(description='Process hyperlibs')
+parser.add_argument('libs', metavar='libs', nargs='+', help='.a files to process')
+parser.add_argument('-r', nargs=1, help='root thunk output')
+parser.add_argument('-g', nargs=1, help='guest thunk output')
+args = parser.parse_args()
+
+# Run nm over input files, concatenate output
+nm = ""
+for f in args.libs:
+	p = subprocess.Popen(['nm', '-g', '--demangle', f], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	out, err = p.communicate()
+	nm = nm + out
+lines = nm.split('\n')
+
+# Extract function names
+regex = re.compile('[^ ]* T (.*)')
+fnlist = [regex.match(x).group(1) for x in lines if regex.search(x)]
+
+# uniq
+fns_work = set()
+fns_add = fns_work.add
+fns = [x for x in fnlist if not (x in fns_work or fns_add(x))]
+
+# Generate root table
+r=open(args.r[0],'w')
+r.write(".section .rodata\n")
+r.write(".balign 4\n")
+r.write(".globl\t_hlt\n")
+r.write("_hlt:\n")
+r.write("\t.word " + str(len(fns)) + "\n")
+for x in fns:
+	r.write("\t.word " + x + "\n")
+r.close()
+
+# Generate guest thunk
+g=open(args.g[0],'w')
+g.write(".section .text\n")
+g.write(".set mips32r2\n")
+g.write(".set virt\n")
+i = 1
+for x in fns:
+	g.write(".balign 4\n")
+	g.write(".globl\t" + x +"\n")
+	g.write(".ent\t" + x +"\n")
+	g.write(x + ":\n")
+	g.write("\tli\t$2, 2\n")
+	g.write("\tli\t$25, " + str(i) + "\n")
+	g.write("\thypcall\t2\n")
+	g.write("\tjr\t$31\n")
+	g.write(".end\t" + x + "\n\n")
+	i = i + 1
+g.close()
+
+# Generate thunk
+#nm --demangle ~/miosmk/lib/*.a|sed -e '/[^ ]* T \(.*\)/!d' -e 's/[^ ]* T \(.*\)/\1/'|uniq

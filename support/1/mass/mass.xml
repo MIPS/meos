@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="mass" prefix="MASS" modtype="Functional">
+	<description>Provides general purpose functions for manipulating mass storage.</description>
+	<imports>debug</imports>
+	<interface>
+		<prologue>
+			#include "meos/debug/paranoia.h"
+
+			typedef struct {
+				PARAHEAD
+				const struct MASS_impl_tag *impl;
+				PARATAIL
+			} MASS_T;
+		</prologue>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/debug/paranoia.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<typedef><c>enum {<nl/>
+			<tab/>MSF_L_ISO=1,<nl/>
+			<tab/>MSF_E_ISO=2,<nl/>
+			<tab/>MSF_EL_ISO=4,<nl/>
+			<tab/>MSF_EB4W=8,<nl/>
+			<tab/>MSF_SYNCABLE=16,<nl/>
+			<tab/>MSF_REMOVEABLE=32,<nl/>
+			<tab/>MSF_REMOVED=64,<nl/>
+			<tab/>MSF_RO=128,<nl/>
+			<tab/>MSF_ERROR=0x80000000<nl/>
+			} MASS_STAT_FLAG_T</c>Status flags for mass storage devices. <code>MSF_L_ISO</code> means logical blocks are all the same size, <code>MSF_E_ISO</code> means erase blocks are all the same size, <code>MSF_EL_ISO</code> means all blocks are the same size, <code>MSF_EB4W</code> means an erase is required before a write may proceed, <code>MSF_SYNCABLE</code> means transactions may not have completed upon function return and thus <code>MASS_sync</code> is meaningful, <code>MSF_REMOVEABLE</code> means the device is removable, <code>MSF_REMOVED</code> means the device has been removed, and <code>MASS_eject</code> should be used to prepare for removal. <code>MSF_ERROR</code> may be set if <code>MASS_stat</code> failed.
+		</typedef>
+		<typedef vis="anonymous"><c>struct MASS_impl_tag{<nl/>
+			<parahead/>
+			int32_t (*stat)(MASS_T *mass, uint64_t *lbs, uint64_t *ebs, uint64_t *size);
+			int32_t (*sync)(MASS_T *mass);
+			int32_t (*eject)(MASS_T *mass);
+			int32_t (*read)(MASS_T *mass, uint8_t *buffer, uint64_t lba, uint64_t offset, uint64_t bytes);
+			int32_t (*write)(MASS_T *mass, const uint8_t *buffer, uint64_t lba, uint64_t offset, uint64_t bytes);
+			int32_t (*lbaToEba)(MASS_T *mass, uint64_t lba, uint64_t offset, uint64_t *eba, uint64_t *eOffset);
+			int32_t (*ebaToLba)(MASS_T *mass, uint64_t lba, uint64_t offset, uint64_t *eba, uint64_t *eOffset);
+			int32_t (*lb)(MASS_T *mass, uint64_t lba, uint64_t *offset, uint64_t *size);
+			int32_t (*eb)(MASS_T *mass, uint64_t eba, uint64_t *offset, uint64_t *size);
+			int32_t (*erase)(MASS_T *mass, uint64_t firstEba, uint64_t lastEba);
+			<paratail/>
+		} MASS_IMPL_T</c>
+		Mass storage implementation type.
+		</typedef>
+		<typedef vis="viranon"><c>struct {<nl/>
+			<parahead/>
+			MASS_IMPL_T *impl;
+			<paratail/>
+		} MASS_T</c>
+		Mass storage type.
+		</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			MASS_T mass;
+			<parahead/>
+			uint8_t *data;
+			size_t size;
+			MASS_STAT_FLAG_T ro;
+			<paratail/>
+		} MASSRAM_T</c>
+		RAM/ROM disk type.
+		</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			MASS_T mass;
+			<parahead/>
+			MASS_T *parent;
+			uint64_t firstEba;
+			uint64_t firstLba;
+			uint64_t firstOffset;
+			uint64_t firstByte;
+			uint64_t nLbs;
+			uint64_t nEbs;
+			uint64_t size;
+			<paratail/>
+		} MASSPART_T</c>
+		Partition type.
+		</typedef>
+		<func name="MASS_stat" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t *" name="lbs">Out parameter for the number of logical blocks on the device.</arg>
+			<arg type="uint64_t *" name="ebs">Out parameter for the number of erase blocks on the device.</arg>
+			<arg type="uint64_t *" name="size">Out parameter for the number of bytes on the device.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success - status flags encoded as <code>MASS_STAT_FLAG_T</code>.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((mass != NULL) &amp;&amp; (lbs != 0) &amp;&amp; (ebs != 0))</precondition>
+			</limitations>
+			<description>Put the number of logical blocks and erase blocks and bytes on the device in <code>lbs</code>,
+			<code>ebs</code> and <code>size</code>, and return the appropriate <code>MASS_GEOM_FLAG_T</code> flags for the device.
+			<par/>
+			If any parameter is <code>NULL</code>, then the respective data will not be written.</description>
+		</func>
+		<func name="MASS_write" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="const uint8_t *" name="buffer">Pointer to buffer memory.</arg>
+			<arg type="uint64_t" name="lba">Logical block address within mass storage.</arg>
+			<arg type="uint64_t" name="offset">Offset from start of <code>lba</code> in bytes.</arg>
+			<arg type="uint64_t" name="bytes">Number of bytes to write.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((mass != NULL) &amp;&amp; (buffer != 0))</precondition>
+			</limitations>
+			<description>Take <code>bytes</code> bytes of data from the memory pointed to by <code>buffer</code>,
+			and write it <code>offset</code> bytes into block <code>lba</code> on device <code>mass</code>.
+			<code>offset</code> and <code>lba</code> will be normalised into the appropriate subsequent block.
+			If <code>bytes</code> is larger than the size of block <code>lba</code>, the write will continue into subsequent blocks.
+			<par/>
+			Mass storage will not be erased prior to writing.
+			<par/>
+			The implementation should ensure transactions are atomic.</description>
+		</func>
+		<func name="MASS_read" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="const uint8_t *" name="buffer">Pointer to buffer memory.</arg>
+			<arg type="uint64_t" name="lba">Logical block address within mass storage.</arg>
+			<arg type="uint64_t" name="offset">Offset from start of <code>lba</code> in bytes.</arg>
+			<arg type="uint64_t" name="bytes">Number of bytes to read.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((mass != NULL) &amp;&amp; (buffer != 0))</precondition>
+			</limitations>
+			<description>Take <code>bytes</code> bytes of data from <code>offset</code> bytes into block <code>lba</code> of device <code>mass</code>,
+			and write it into the memory pointed to by <code>buffer</code>.
+			<code>offset</code> and <code>lba</code> will be normalised into the appropriate subsequent block.
+			If <code>bytes</code> is larger than the size of block <code>lba</code>, the read will continue into subsequent blocks.
+			<par/>
+			The implementation should ensure transactions are atomic.</description>
+		</func>
+		<func name="MASS_lbaToEba" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t" name="lba">Logical block address within mass storage.</arg>
+			<arg type="uint64_t" name="offset">Offset from start of <code>lba</code> in bytes.</arg>
+			<arg type="uint64_t *" name="eba">Out parameter for erase block address within mass storage.</arg>
+			<arg type="uint64_t *" name="eOffset">Out parameter offset from start of <code>eba</code> in bytes.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(mass != NULL)</precondition>
+			</limitations>
+			<description>First, <code>lba</code> and <code>offset</code> are internally normalised. Then result is then
+			mapped from the logical block address space to the erase block address space, and the result is written to
+			<code>eba</code> and <code>eOffset</code>.</description>
+		</func>
+		<func name="MASS_ebaToLba" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t" name="eba">Erase block address within mass storage.</arg>
+			<arg type="uint64_t" name="offset">Offset from start of <code>lba</code> in bytes.</arg>
+			<arg type="uint64_t *" name="lba">Out parameter for logical block address within mass storage.</arg>
+			<arg type="uint64_t *" name="lOffset">Out parameter offset from start of <code>lba</code> in bytes.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(mass != NULL)</precondition>
+			</limitations>
+			<description>First, <code>eba</code> and <code>offset</code> are internally normalised. Then result is then
+			mapped from the erase block address space to the logical block address space, and the result is written to
+			<code>lba</code> and <code>lOffset</code>.</description>
+		</func>
+		<func name="MASS_lb" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t" name="lba">Logical block address within mass storage.</arg>
+			<arg type="uint64_t *" name="offset">Out parameter for offset of logical block from start of mass storage in bytes.</arg>
+			<arg type="uint64_t *" name="size">Out parameter for size of logical block within mass storage in bytes.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success - status flags encoded as <code>MASS_STAT_FLAG_T</code>.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(mass != NULL)</precondition>
+			</limitations>
+			<description>
+				Write offset and size in bytes of logical block <code>lba</code> to <code>offset</code> and <code>size</code> respectively.<par/>
+				If any parameter is <code>NULL</code>, then the respective data will not be written.
+			</description>
+		</func>
+		<func name="MASS_eb" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t" name="eba">Erase block address within mass storage.</arg>
+			<arg type="uint64_t *" name="offset">Out parameter for offset of erase block from start of mass storage in bytes.</arg>
+			<arg type="uint64_t *" name="size">Out parameter for size of erase block within mass storage in bytes.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(mass != NULL)</precondition>
+			</limitations>
+			<description>
+				Write offset and size in bytes of erase block <code>lba</code> to <code>offset</code> and <code>size</code> respectively.<par/>
+				If any parameter is <code>NULL</code>, then the respective data will not be written.
+			</description>
+		</func>
+		<func name="MASS_erase" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t" name="firstEba">First erase block address to erase.</arg>
+			<arg type="uint64_t" name="lastEba">Last erase block address to erase.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(mass != NULL)</precondition>
+			</limitations>
+			<description>Erase blocks <code>firstEba</code> to <code>lastEba</code>. Note that
+			these are <emph>erase block addresses</emph>, not logical block addresses.
+			<par/>
+			The implementation should ensure transactions are atomic.</description>
+		</func>
+		<func name="MASS_normaliseLba" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t *" name="lba">Pointer to logical block address.</arg>
+			<arg type="uint64_t *" name="offset">Pointer to offset.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((mass != NULL) &amp;&amp; (lba != NULL) &amp;&amp; (offset != NULL))</precondition>
+			</limitations>
+			<description>Normalise <code>lba</code> and <code>offset</code>, such that <code>offset</code> lies in <code>lba</code>.
+			</description>
+		</func>
+		<func name="MASS_normaliseEba" vis="virtual">
+			<arg type="MASS_T *" name="mass" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="uint64_t *" name="lba">Pointer to erase block address.</arg>
+			<arg type="uint64_t *" name="offset">Pointer to offset.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((mass != NULL) &amp;&amp; (lba != NULL) &amp;&amp; (offset != NULL))</precondition>
+			</limitations>
+			<description>Normalise <code>eba</code> and <code>offset</code>, such that <code>offset</code> lies in <code>eba</code>.
+			</description>
+		</func>
+		<func name="MASS_initRam">
+			<arg type="MASSRAM_T *" name="ram" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="void *" name="data">Memory to used for disk.</arg>
+			<arg type="uint64_t" name="size">Size of RAM disk in bytes.</arg>
+			<arg type="int32_t" name="readonly">0 if RW, else RO.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((ram != NULL) &amp;&amp; (data != NULL) &amp;&amp; (size > 0))</precondition>
+			</limitations>
+			<description>Initiailise <code>ram</code> disk using <code>size</code> bytes of <code>data</code> as storage.
+			</description>
+		</func>
+		<func name="MASS_initPartition">
+			<arg type="MASSPART_T *" name="partition" traceable="Y">Pointer to mass storage device.</arg>
+			<arg type="MASS_T *" name="parent" traceable="Y">Pointer to parent mass storage device.</arg>
+			<arg type="uint64_t" name="firstLba">First logical block in partition.</arg>
+			<arg type="uint64_t" name="firstOffset">Starting offset of partition within <code>firstLba</code>.</arg>
+			<arg type="uint64_t" name="lastLba">Last logical block in partition.</arg>
+			<arg type="uint64_t" name="lastOffset">Ending offset of partition within <code>lastLba</code>.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((partition != NULL) &amp;&amp; (parent != NULL))</precondition>
+			</limitations>
+			<description>Create a device representing a partition within <code>parent</code>. <code>firstLba</code>, <code>firstOffset</code>, <code>lastLba</code>, and <code>lastOffset</code> must align with erase blocks on <code>parent</code>.
+			</description>
+		</func>
+		<func name="MASS_device" vis="virtual">
+			<arg type="uint32_t" name="index">Device number to fetch.</arg>
+			<return type="MASS_T *">Mass device for index.</return>
+			<description>Return the <code>index</code> ed mass storage device. These will typically be generated by the board support package.</description>
+		</func>
+		<epilogue>
+			#define MASS_stat(MASS, LBS, EBS, SIZE) ((MASS_T*)(MASS))->impl->stat((MASS), (LBS), (EBS), (SIZE))
+			#define MASS_sync(MASS) ((MASS_T*)(MASS))->impl->sync((MASS))
+			#define MASS_eject(MASS) ((MASS_T*)(MASS))->impl->sync((MASS))
+			#define MASS_read(MASS, BUFFER, LBA, OFFSET, BYTES) ((MASS_T*)(MASS))->impl->read((MASS), (BUFFER), (LBA), (OFFSET), (BYTES))
+			#define MASS_write(MASS, BUFFER, LBA, OFFSET, BYTES) ((MASS_T*)(MASS))->impl->write((MASS), (BUFFER), (LBA), (OFFSET), (BYTES))
+			#define MASS_lbaToEba(MASS, LBA, OFFSET, EBA, EOFFSET) ((MASS_T*)(MASS))->impl->lbaToEba((MASS), (LBA), (OFFSET), (EBA), (EOFFSET))
+			#define MASS_ebaToLba(MASS, LBA, OFFSET, EBA, EOFFSET) ((MASS_T*)(MASS))->impl->lbaToEba((MASS), (LBA), (OFFSET), (EBA), (EOFFSET))
+			#define MASS_lb(MASS, LBA, OFFSET, SIZE) ((MASS_T*)(MASS))->impl->lb((MASS), (LBA), (OFFSET), (SIZE))
+			#define MASS_eb(MASS, EBA, OFFSET, SIZE) ((MASS_T*)(MASS))->impl->eb((MASS), (EBA), (OFFSET), (SIZE))
+			#define MASS_erase(MASS, FIRSTEBA, LASTEBA) ((MASS_T*)(MASS))->impl->erase((MASS), (FIRSTEBA), (LASTEBA))
+
+			inline static int32_t MASS_normaliseLba(MASS_T *mass, uint64_t *lba, uint64_t *offset)
+			{
+				uint64_t size;
+				for (;;) {
+					if (MASS_lb(mass, *lba, NULL, &amp;size) &lt; 0)
+						return -1;
+					if (*offset >= size) {
+						(*offset) -= size;
+						(*lba)++;
+					} else {
+						break;
+					}
+				}
+				return 0;
+			}
+			inline static int32_t MASS_normaliseEba(MASS_T *mass, uint64_t *eba, uint64_t *offset)
+			{
+				uint64_t size;
+				for (;;) {
+					if (MASS_eb(mass, *eba, NULL, &amp;size) &lt; 0)
+						return -1;
+					if (*offset >= size) {
+						(*offset) -= size;
+						(*eba)++;
+					} else {
+						break;
+					}
+				}
+				return 0;
+			}
+
+			inline static MASS_T *MASS_device(uint32_t index)
+			{
+				extern void *MASSMUX_masses[];
+				return (MASS_T*)MASSMUX_masses[index];
+			}
+		</epilogue>
+	</interface>
+</module>

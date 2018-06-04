@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="cpio" prefix="CPIO" modtype="Special">
+	<description>Simple read only filesystem</description>
+	<imports>fatfs</imports>
+	<interface>
+                <prologue>
+#define CPIO_MAX_FILES (12)
+#define CPIO_MAX_NAMESIZE (64)
+#define CPIO_ASSUME_PDP (1)
+
+#define CPIO_magic "070707"
+
+#ifndef SEEK_SET
+#define SEEK_SET 0
+#endif
+#ifndef SEEK_CUR
+#define SEEK_CUR 1
+#endif
+#ifndef SEEK_END
+#define SEEK_END 2
+#endif
+
+struct CPIO_stat;
+		</prologue>
+		<include lib="N">MEOS.h</include>
+		<include lib="N">meos/mass/mass.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="Y">errno.h</include>
+		<include lib="Y">sys/types.h</include>
+
+		<typedef>
+			<c>struct CPIO_tag CPIO_T</c>CPIO object containing disk and open file information.
+		</typedef>
+
+		<typedef><c>struct {<nl/>
+			<tab/>uint16_t dev;<nl/>
+			<tab/>uint16_t ino;<nl/>
+			<tab/>uint16_t mode;<nl/>
+			<tab/>uint16_t uid;<nl/>
+			<tab/>uint16_t gid;<nl/>
+			<tab/>uint16_t nlink;<nl/>
+			<tab/>uint16_t rdev;<nl/>
+			<tab/>uint32_t mtime;<nl/>
+			<tab/>uint16_t namesize;<nl/>
+			<tab/>uint32_t filesize;<nl/>
+		} CPIO_STAT_T</c>File information data, as used by <code>CPIO_stat</code>. Most information is only relevant to Unix systems, except <code>filesize</code>, the number of bytes in the file.</typedef>
+
+		<func name="CPIO_init">
+			<arg type="CPIO_T* const" name="c">CPIO object.</arg>
+			<arg type="MASS_T* const" name="mass">MASS source object.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="Negative">Error.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((c != NULL) &amp;&amp; (mass != NULL))</precondition>
+			</limitations>
+			<description>Initialise a CPIO file system on mass storage device <code>mass</code>.
+			</description>
+		</func>
+
+		<func name="CPIO_open">
+			<arg type="CPIO_T* const" name="c">CPIO object.</arg>
+			<arg type="const uint8_t* const" name="path">The path of the file to be opened.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="-ENFILE"> Error - file table overflow.</item>
+					<item val="-ENOEXIST"> Error - file not found.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((c != NULL) &amp;&amp; (path != NULL))</precondition>
+			</limitations>
+			<description>Open the file with name <code>path</code>.
+			</description>
+		</func>
+
+		<func name="CPIO_close">
+			<arg type="CPIO_T* const" name="c">CPIO object.</arg>
+			<arg type="const int" name="fd">The file descriptor of the file to be closed.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(c != NULL)</precondition>
+			</limitations>
+			<description>Close the file with descriptor <code>fd</code>.
+			</description>
+		</func>
+
+		<func name="CPIO_read">
+			<arg type="CPIO_T* const" name="c">CPIO object.</arg>
+			<arg type="const int" name="fd">The file descriptor of the file to be read.</arg>
+			<arg type="uint8_t* const" name="buf">A pointer to the buffer to read into.</arg>
+			<arg type="const size_t" name="count">The number of bytes to be read.</arg>
+			<return type="ssize_t">
+				<enum>
+					<item val="Positive">Success - bytes read.</item>
+					<item val="-EBADF">Error - bad file descriptor.</item>
+					<item val="-EINVAL">Error - invalid arguments or file pointer out of range.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((c != NULL) &amp;&amp; (buf != NULL))</precondition>
+			</limitations>
+			<description>Read <code>count</code> bytes from the file with descriptor <code>fd</code> into <code>buf</code>.
+			</description>
+		</func>
+
+		<func name="CPIO_lseek">
+			<arg type="CPIO_T* const" name="c">CPIO object.</arg>
+			<arg type="const int" name="fd">The file descriptor of the file whose pointer is to be modified.</arg>
+			<arg type="const off_t" name="offset">The offset from <code>whence</code> to move the file poiter.</arg>
+			<arg type="const int" name="whence">The point with which <code>offset</code> will be summed to give the new file pointer. Can be one of: <code>SEEK_SET</code> indicates the begining of the file. <code>SEEK_CUR</code> the current file pointer position. <code>SEEK_END</code> the end of the file.</arg>
+			<return type="off_t">
+				<enum>
+					<item val="Positive">Success - offset from start in bytes.</item>
+					<item val="-EBADF">Error - bad file descriptor.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(c != NULL)</precondition>
+			</limitations>
+			<description>Move the file pointer for <code>fd</code> to an <code>offset</code> from the point specified by <code>whence</code>.
+			</description>
+		</func>
+
+		<func name="CPIO_tell">
+			<arg type="CPIO_T* const" name="c">CPIO object.</arg>
+			<arg type="const int" name="fd">The file descriptor of the file whose pointer is to be read.</arg>
+			<return type="off_t">
+				<enum>
+					<item val="Positive">Success - offset from start in bytes.</item>
+					<item val="-EBADF">Error - bad file descriptor.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(c != NULL)</precondition>
+			</limitations>
+			<description>Get the current file pointer within <code>fd</code>.
+			</description>
+		</func>
+
+		<func name="CPIO_stat">
+			<arg type="CPIO_T* const" name="c">CPIO object.</arg>
+			<arg type="const uint8_t* const" name="path">The path of the file to be evaluated.</arg>
+			<arg type="CPIO_STAT_T* const" name="buf">The buffer to be overwritten with the file information.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Positive">Success.</item>
+					<item val="-EBADF">Error - bad file descriptor.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((c != NULL) &amp;&amp; (buf != NULL))</precondition>
+			</limitations>
+			<description>Get file information for <code>path</code>, and use it to fill <code>buf</code>.
+			</description>
+		</func>
+		<epilogue>
+typedef struct {
+		uint32_t header;
+		uint32_t data;
+		uint32_t pointer;
+		uint32_t next;
+		uint32_t end;
+} CPIO_FILE_T;
+
+struct CPIO_tag {
+	MASS_T *mass;
+	int32_t (*gmr)(CPIO_T* const, uint8_t*, const uint32_t, const uint32_t);
+	CPIO_FILE_T files[CPIO_MAX_FILES];
+};
+		</epilogue>
+	</interface>
+</module>

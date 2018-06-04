@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="PIC32 UART" prefix="PIC32_UART" modtype="Special">
+	<description>Implements a PIC32 UART driver.</description>
+	<imports>kernel</imports>
+	<imports>uart</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">meos/uart/uart.h</include>
+		<typedef>
+			<c>struct PIC32_UART_tag PIC32_UART_T</c>(Incomplete) PIC32 UART system object definition.
+		</typedef>
+		<func name="PIC32_UART_init">
+			<arg type="PIC32_UART_T *" name="uart" traceable="Y">Pointer to PIC32_UART UART system object.</arg>
+			<arg type="uint8_t *" name="txBuf">Transmission byte buffer.</arg>
+			<arg type="size_t" name="txLen">Number of bytes in <code>txBuf</code>.</arg>
+			<arg type="uint8_t *" name="rxBuf">Receive byte buffer.</arg>
+			<arg type="size_t" name="rxLen">Number of bytes in <code>rxBuf</code>.</arg>
+			<arg type="IRQ_DESC_T *" name="txi">Tx IRQ descriptor for specified UART.</arg>
+			<arg type="IRQ_DESC_T *" name="rxi">Rx IRQ descriptor for specified UART.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((uart != NULL) &amp;&amp; (txBuf != NULL) &amp;&amp; (txLen > 0) &amp;&amp; (rxBuf != NULL) &amp;&amp; (rxLen > 0))</precondition>
+			</limitations>
+			<description>Initialises the UART described by <code>uart</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+/* complete the PIC32_UART_T definition... */
+struct PIC32_UART_tag {
+	UART_T	uart;
+	uintptr_t	pAddr;
+	volatile uint32_t*	regs;
+	uint32_t	clock;
+};
+		</epilogue>
+	</interface>
+</module>

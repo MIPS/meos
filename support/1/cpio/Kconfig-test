@@ -1,0 +1,7 @@
+config TEST_cpio
+bool "cpio"
+depends on CPIO
+default n
+help
+	Creates a const array of data and overloads the weak functions in
+	cpio.c to read from it.

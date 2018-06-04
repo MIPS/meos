@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="mrfnetif" prefix="MRFNETIF" modtype="Special">
+	<description>MRF24WG LwIP driver</description>
+	<interface>
+		<include lib="N">lwip/opt.h</include>
+		<include lib="N">lwip/def.h</include>
+    <include lib="N">lwip/sys.h</include>
+		<include lib="N">lwip/mem.h</include>
+    <include lib="N">lwip/pbuf.h</include>
+		<include lib="N">lwip/stats.h</include>
+    <include lib="N">lwip/etharp.h</include>
+    <typedef vis="private"><c>struct MRFNETIF_tag MRFNETIF_T</c>(Incomplete) MRFNETIF system object definition.</typedef>
+    <func name="MRFNETIF_dtInit">
+	    <arg type="MRFNETIF_T *" name="mrfnetif" traceable="Y">Pointer to MRFNETIF system object.</arg>
+	    <arg type="IRQ_DESC_T *" name="irq">IRQ descriptor for specified MRFNETIF.</arg>
+	    <return type="void"/>
+	    <limitations>
+		    <precondition>((mrfnetif != NULL) &amp;&amp; (irq != NULL))</precondition>
+	    </limitations>
+	    <description>Initialises the MRFNETIF described by <code>mrfnetif</code> based on the provided configuration.
+	    </description>
+    </func>
+    <epilogue>
+/* complete the MRFNETIF_tag definition... */
+struct MRFNETIF_tag {
+	uintptr_t	pAddr;
+	volatile uint32_t*	regs;
+	struct netif netif;
+};
+    </epilogue>
+    </interface>
+</module>

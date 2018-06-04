@@ -1,0 +1,20 @@
+menuconfig DRIVER_FDC
+bool "FDC"
+default Y
+select DRIVER_UART
+help
+	Driver for the MIPS FDC.
+
+config DRIVER_FDC_TX_BUFFER
+int "Default Tx buffer size"
+default 128
+depends on DRIVER_FDC
+help
+	Default transmission buffer size. May be overridden by initialisation.
+
+config DRIVER_FDC_RX_BUFFER
+int "Default Rx buffer size"
+default 128
+depends on DRIVER_FDC
+help
+	Default transmission buffer size. May be overridden by initialisation.

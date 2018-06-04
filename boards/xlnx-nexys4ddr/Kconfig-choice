@@ -1,0 +1,5 @@
+config BSP_XLNX_NEXYS4DDR
+bool "NEXYS4DDR"
+select ARCH_MIPS_BASELINE_XPSINTC
+help
+	Target a NEXYS4DDR system.

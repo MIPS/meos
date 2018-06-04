@@ -1,0 +1,753 @@
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs.c post/fs/nffs/src/nffs.c
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs.c	2017-02-17 23:43:52.000000000 +0000
++++ post/fs/nffs/src/nffs.c	2017-04-10 16:05:57.154326105 +0100
+@@ -9 +9 @@
+- * 
++ *
+@@ -29,2 +28,0 @@
+-#include "flash_map/flash_map.h"
+-#include "os/os_mempool.h"
+@@ -38 +36 @@
+-struct nffs_area *nffs_areas;
++struct nffs_area nffs_areas[NFFS_AREA_MAX];
+@@ -61 +59 @@
+-static struct os_mutex nffs_mutex;
++struct os_mutex nffs_mutex;
+@@ -63 +60,0 @@
+-struct log nffs_log;
+@@ -84 +81 @@
+-static const struct fs_ops nffs_ops = {
++const struct fs_ops nffs_ops = {
+@@ -149 +146 @@
+-static int
++int
+@@ -659,0 +657 @@
++#if 0
+@@ -791,0 +790 @@
++#endif
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_gc.c post/fs/nffs/src/nffs_gc.c
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_gc.c	2017-02-17 23:43:52.000000000 +0000
++++ post/fs/nffs/src/nffs_gc.c	2017-04-10 16:05:57.150326070 +0100
+@@ -185 +185 @@
+-    uint8_t *data;
++	uint8_t data[data_len];
+@@ -189 +188,0 @@
+-    memset(&last_block, 0, sizeof last_block);
+@@ -191,5 +189,0 @@
+-    data = malloc(data_len);
+-    if (data == NULL) {
+-        rc = FS_ENOMEM;
+-        goto done;
+-    }
+@@ -272 +265,0 @@
+-    free(data);
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_hash.c post/fs/nffs/src/nffs_hash.c
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_hash.c	2017-02-17 23:43:52.000000000 +0000
++++ post/fs/nffs/src/nffs_hash.c	2017-04-10 16:05:57.150326070 +0100
+@@ -26 +26 @@
+-struct nffs_hash_list *nffs_hash;
++struct nffs_hash_list nffs_hash[NFFS_HASH_SIZE];
+@@ -201,8 +200,0 @@
+-
+-    free(nffs_hash);
+-
+-    nffs_hash = malloc(NFFS_HASH_SIZE * sizeof *nffs_hash);
+-    if (nffs_hash == NULL) {
+-        return FS_ENOMEM;
+-    }
+-
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_misc.c post/fs/nffs/src/nffs_misc.c
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_misc.c	2017-02-17 23:43:52.000000000 +0000
++++ post/fs/nffs/src/nffs_misc.c	2017-04-10 16:05:57.150326070 +0100
+@@ -21 +20,0 @@
+-#include "flash_map/flash_map.h"
+@@ -252,2 +251 @@
+-        free(nffs_areas);
+-        nffs_areas = NULL;
++		memset(nffs_areas, 0, sizeof(*nffs_areas) * NFFS_AREA_MAX);
+@@ -255,4 +253,3 @@
+-        nffs_areas = realloc(nffs_areas, num_areas * sizeof *nffs_areas);
+-        if (nffs_areas == NULL) {
+-            return FS_ENOMEM;
+-        }
++		if (num_areas > NFFS_AREA_MAX)
++			return FS_ENOMEM;
++		memset(&nffs_areas[num_areas], 0, sizeof(*nffs_areas) * (NFFS_AREA_MAX - num_areas));
+@@ -418,2 +415 @@
+-    free(nffs_areas);
+-    nffs_areas = NULL;
++    memset(nffs_areas, 0, sizeof(*nffs_areas) * NFFS_AREA_MAX);
+@@ -445 +441 @@
+-
++#if 0
+@@ -511,0 +508 @@
++#endif
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_priv.h post/fs/nffs/src/nffs_priv.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/fs/nffs/src/nffs_priv.h	2017-02-17 23:43:52.000000000 +0000
++++ post/fs/nffs/src/nffs_priv.h	2017-04-10 16:05:57.154326105 +0100
+@@ -22,0 +23,2 @@
++#include "MEOS.h"
++
+@@ -24 +25,0 @@
+-#include "log/log.h"
+@@ -287 +288 @@
+-extern struct nffs_area *nffs_areas;
++extern struct nffs_area nffs_areas[NFFS_AREA_MAX];
+@@ -297 +298 @@
+-extern struct nffs_hash_list *nffs_hash;
++extern struct nffs_hash_list nffs_hash[NFFS_HASH_SIZE];
+@@ -301 +301,0 @@
+-extern struct log nffs_log;
+@@ -526 +526 @@
+-    LOG_ ## lvl(&nffs_log, LOG_MODULE_NFFS, __VA_ARGS__)
++	DBG_logF("NFFS - " #lvl ": " __VA_ARGS__)
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/hw/bsp/meos/include/bsp/bsp.h post/hw/bsp/meos/include/bsp/bsp.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/hw/bsp/meos/include/bsp/bsp.h	1970-01-01 01:00:00.000000000 +0100
++++ post/hw/bsp/meos/include/bsp/bsp.h	2017-04-10 16:05:57.154326105 +0100
+@@ -0,0 +1 @@
++/**/
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os.h post/kernel/os/include/os/os.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os.h	2017-02-17 23:43:52.000000000 +0000
++++ post/kernel/os/include/os/os.h	2017-04-10 16:05:57.154326105 +0100
+@@ -94,9 +93,0 @@
+-#include "os/endian.h"
+-#include "os/os_arch.h"
+-#include "os/os_callout.h"
+-#include "os/os_dev.h"
+-#include "os/os_eventq.h"
+-#include "os/os_heap.h"
+-#include "os/os_mbuf.h"
+-#include "os/os_mempool.h"
+-#include "os/os_mutex.h"
+@@ -104,4 +95,2 @@
+-#include "os/os_sched.h"
+-#include "os/os_sem.h"
+-#include "os/os_task.h"
+-#include "os/os_time.h"
++#include "os/os_mutex.h"
++#include "os/os_mempool.h"
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os_malloc.h post/kernel/os/include/os/os_malloc.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os_malloc.h	2017-02-17 23:43:52.000000000 +0000
++++ post/kernel/os/include/os/os_malloc.h	2017-04-10 16:05:57.158326140 +0100
+@@ -23,18 +22,0 @@
+-#include "os/os_heap.h"
+-
+-#ifdef __cplusplus
+-extern "C" {
+-#endif
+-
+-#undef  malloc
+-#define malloc  os_malloc
+-
+-#undef  free
+-#define free    os_free
+-
+-#undef  realloc
+-#define realloc  os_realloc
+-
+-#ifdef __cplusplus
+-}
+-#endif
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os_mutex.h post/kernel/os/include/os/os_mutex.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os_mutex.h	2017-02-17 23:43:52.000000000 +0000
++++ post/kernel/os/include/os/os_mutex.h	2017-04-10 16:05:57.158326140 +0100
+@@ -23,2 +23 @@
+-#include "os/os.h"
+-#include "os/queue.h"
++#include "MEOS.h"
+@@ -32,5 +31 @@
+-    SLIST_HEAD(, os_task) mu_head;  /* chain of waiting tasks */
+-    uint8_t     _pad;
+-    uint8_t     mu_prio;            /* owner's default priority*/
+-    uint16_t    mu_level;           /* call nesting level */
+-    struct os_task *mu_owner;       /* owners task */
++	KRN_LOCK_T lock;
+@@ -55 +50 @@
+-os_error_t os_mutex_init(struct os_mutex *mu);
++#define os_mutex_init(mu) (KRN_initLock(&(mu)->lock),0)
+@@ -58 +53 @@
+-os_error_t os_mutex_release(struct os_mutex *mu);
++#define os_mutex_release(mu) (KRN_unlock(&(mu)->lock),0)
+@@ -61 +56 @@
+-os_error_t os_mutex_pend(struct os_mutex *mu, uint32_t timeout);
++#define os_mutex_pend(mu, timeout) (KRN_lock(&(mu)->lock,KRN_INFWAIT),0)
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os_sanity.h post/kernel/os/include/os/os_sanity.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/kernel/os/include/os/os_sanity.h	2017-02-17 23:43:52.000000000 +0000
++++ post/kernel/os/include/os/os_sanity.h	2017-04-10 16:05:57.154326105 +0100
+@@ -25,38 +24,0 @@
+-#include "os/os_time.h"
+-#include "os/queue.h"
+-
+-#ifdef __cplusplus
+-extern "C" {
+-#endif
+-
+-struct os_sanity_check;
+-typedef int (*os_sanity_check_func_t)(struct os_sanity_check *, void *);
+-
+-struct os_sanity_check {
+-    os_time_t sc_checkin_last;
+-    os_time_t sc_checkin_itvl;
+-    os_sanity_check_func_t sc_func;
+-    void *sc_arg;
+-
+-    SLIST_ENTRY(os_sanity_check) sc_next;
+-
+-};
+-
+-#define OS_SANITY_CHECK_SETFUNC(__sc, __f, __arg, __itvl)  \
+-    (__sc)->sc_func = (__f);                               \
+-    (__sc)->sc_arg = (__arg);                              \
+-    (__sc)->sc_checkin_itvl = (__itvl) * OS_TICKS_PER_SEC;
+-
+-int os_sanity_init(void);
+-void os_sanity_run(void);
+-
+-struct os_task;
+-int os_sanity_task_checkin(struct os_task *);
+-
+-int os_sanity_check_init(struct os_sanity_check *);
+-int os_sanity_check_register(struct os_sanity_check *);
+-int os_sanity_check_reset(struct os_sanity_check *);
+-
+-#ifdef __cplusplus
+-}
+-#endif
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os.h post/libs/os/include/os/os.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os.h	1970-01-01 01:00:00.000000000 +0100
++++ post/libs/os/include/os/os.h	2017-04-10 16:05:57.158326140 +0100
+@@ -0,0 +1,90 @@
++/**
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#ifndef _OS_H
++#define _OS_H
++
++#include <stdlib.h>
++//#include <stdint.h>
++
++#ifndef min
++#define min(a, b) ((a)<(b)?(a):(b))
++#endif
++
++#ifndef max
++#define max(a, b) ((a)>(b)?(a):(b))
++#endif
++
++#define os_get_return_addr() (__builtin_return_address(0))
++
++#define OS_ALIGN(__n, __a) (                             \
++        (((__n) & ((__a) - 1)) == 0)                   ? \
++            (__n)                                      : \
++            ((__n) + ((__a) - ((__n) & ((__a) - 1))))    \
++        )
++
++
++/**
++ * Whether or not the operating system has been started.  Set to
++ * 1 right before first task is run.
++ */
++extern int g_os_started;
++
++int os_info_init(void);
++
++/**
++ * Returns 1 if the OS has been started, 0 if it has not yet been
++ * been started.
++ */
++int os_started(void);
++
++/* OS error enumerations */
++enum os_error {
++    OS_OK = 0,
++    OS_ENOMEM = 1,
++    OS_EINVAL = 2,
++    OS_INVALID_PARM = 3,
++    OS_MEM_NOT_ALIGNED = 4,
++    OS_BAD_MUTEX = 5,
++    OS_TIMEOUT = 6,
++    OS_ERR_IN_ISR = 7,      /* Function cannot be called from ISR */
++    OS_ERR_PRIV = 8,        /* Privileged access error */
++    OS_NOT_STARTED = 9,     /* Operating must be started to call this function, but isn't */
++    OS_ENOENT = 10,         /* No such thing */
++};
++
++#define OS_WAIT_FOREVER (-1)
++
++typedef enum os_error os_error_t;
++
++#define OS_SANITY_PRIO (0xfe)
++#define OS_IDLE_PRIO (0xff)
++
++void os_init(void);
++void os_start(void);
++
++/* XXX: Not sure if this should go here; I want to differentiate API that
++ * should be called by application developers as those that should not. */
++void os_init_idle_task(void);
++
++#include "os/os_sanity.h"
++#include "os/os_mutex.h"
++#include "os/os_mempool.h"
++
++#endif /* _OS_H */
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os_malloc.h post/libs/os/include/os/os_malloc.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os_malloc.h	1970-01-01 01:00:00.000000000 +0100
++++ post/libs/os/include/os/os_malloc.h	2017-04-10 16:05:57.158326140 +0100
+@@ -0,0 +1,24 @@
++/**
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#ifndef H_OS_MALLOC_
++#define H_OS_MALLOC_
++
++
++#endif
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os_mutex.h post/libs/os/include/os/os_mutex.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os_mutex.h	1970-01-01 01:00:00.000000000 +0100
++++ post/libs/os/include/os/os_mutex.h	2017-04-10 16:05:57.162326175 +0100
+@@ -0,0 +1,54 @@
++/**
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#ifndef _OS_MUTEX_H_
++#define _OS_MUTEX_H_
++
++#include "MEOS.h"
++
++struct os_mutex
++{
++	KRN_LOCK_T lock;
++};
++
++/* 
++  XXX: NOTES
++    -> Should we add a magic number or flag to the mutex structure so
++    that we know that this is a mutex? We can use it for double checking
++    that a proper mutex was passed in to the API.
++    -> What debug information should we add to this structure? Who last
++    acquired the mutex? File/line where it was released?
++    -> Should we add a name to the mutex?
++    -> Should we add a "os_mutex_inspect() api?
++*/
++
++/* XXX: api to create
++os_mutex_inspect(); 
++*/ 
++
++/* Initialize a mutex */
++#define os_mutex_init(mu) (KRN_initLock(&(mu)->lock),0)
++
++/* Release a mutex */
++#define os_mutex_release(mu) (KRN_unlock(&(mu)->lock),0)
++
++/* Pend (wait) for a mutex */
++#define os_mutex_pend(mu, timeout) (KRN_lock(&(mu)->lock,KRN_INFWAIT),0)
++
++#endif  /* _OS_MUTEX_H_ */
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os_sanity.h post/libs/os/include/os/os_sanity.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/os/include/os/os_sanity.h	1970-01-01 01:00:00.000000000 +0100
++++ post/libs/os/include/os/os_sanity.h	2017-04-10 16:05:57.162326175 +0100
+@@ -0,0 +1,26 @@
++/**
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#ifndef _OS_SANITY_H
++#define _OS_SANITY_H
++
++#include <stdint.h> 
++
++
++#endif /* _OS_SANITY_H */
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/testutil/include/testutil/testutil.h post/libs/testutil/include/testutil/testutil.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/libs/testutil/include/testutil/testutil.h	1970-01-01 01:00:00.000000000 +0100
++++ post/libs/testutil/include/testutil/testutil.h	2017-04-10 16:05:57.158326140 +0100
+@@ -0,0 +1,25 @@
++/**
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *  http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++#ifndef H_TESTUTIL_
++#define H_TESTUTIL_
++
++#define ASSERT_IF_TEST(expr)
++
++#endif
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/syscfg/syscfg.h post/syscfg/syscfg.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/syscfg/syscfg.h	1970-01-01 01:00:00.000000000 +0100
++++ post/syscfg/syscfg.h	2017-04-10 16:05:57.162326175 +0100
+@@ -0,0 +1 @@
++/**/
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/sysflash/sysflash.c post/sysflash/sysflash.c
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/sysflash/sysflash.c	1970-01-01 01:00:00.000000000 +0100
++++ post/sysflash/sysflash.c	2017-04-10 16:05:57.162326175 +0100
+@@ -0,0 +1 @@
++/**/
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/sysflash/sysflash.h post/sysflash/sysflash.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/sysflash/sysflash.h	1970-01-01 01:00:00.000000000 +0100
++++ post/sysflash/sysflash.h	2017-04-10 16:05:57.162326175 +0100
+@@ -0,0 +1 @@
++/**/
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/sysinit/sysinit.h post/sysinit/sysinit.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/sysinit/sysinit.h	1970-01-01 01:00:00.000000000 +0100
++++ post/sysinit/sysinit.h	2017-04-10 16:05:57.162326175 +0100
+@@ -0,0 +1 @@
++/**/
+diff -Nru0 incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/test/testutil/include/testutil/testutil.h post/test/testutil/include/testutil/testutil.h
+--- incubator-mynewt-core-8cf8f54dcf4cb2dc67ccd9353af464446d27b86e/test/testutil/include/testutil/testutil.h	2017-02-17 23:43:52.000000000 +0000
++++ post/test/testutil/include/testutil/testutil.h	2017-04-10 16:05:57.166326211 +0100
+@@ -23,269 +22,0 @@
+-#include <inttypes.h>
+-#include <setjmp.h>
+-
+-#include "os/queue.h"
+-
+-#include "syscfg/syscfg.h"
+-
+-#ifdef __cplusplus
+-extern "C" {
+-#endif
+-
+-/*
+- * General execution flow of test suites and callbacks (more to come XXX)
+- *
+- * TEST_SUITE
+- *      tu_suite_init -> ts_suite_init_cb
+- *          tu_suite_pre_test -> ts_case_pre_test_cb
+- *              tu_case_init -> tc_case_init_cb
+- *              tu_case_pre_test -> tc_case_pre_test_cb
+- *                  TEST_CASE
+- *              tu_case_post_test -> tc_case_post_test_cb
+- *              tu_case_pass/tu_case_fail -> ts_case_{pass,fail}_cb
+- *              tu_case_complete
+- *          tu_suite_post_test -> ts_case_post_test_cb
+- *      tu_suite_complete -> ts_suite_complete_cb
+- */
+-
+-typedef void tu_case_report_fn_t(char *msg, int msg_len, void *arg);
+-typedef void tu_suite_restart_fn_t(void *arg);
+-
+-typedef void tu_pre_test_fn_t(void *arg);
+-typedef void tu_post_test_fn_t(void *arg);
+-
+-typedef void tu_init_test_fn_t(void *arg);
+-typedef void tu_pre_test_fn_t(void *arg);
+-typedef void tu_post_test_fn_t(void *arg);
+-
+-typedef void tu_testsuite_fn_t(void);
+-
+-/*
+- * Private declarations - Test Suite configuration
+- */
+-void tu_suite_set_init_cb(tu_init_test_fn_t *cb, void *cb_arg);
+-void tu_suite_set_complete_cb(tu_init_test_fn_t *cb, void *cb_arg);
+-void tu_suite_set_pre_test_cb(tu_pre_test_fn_t *cb, void *cb_arg);
+-void tu_suite_set_post_test_cb(tu_post_test_fn_t *cb, void *cb_arg);
+-void tu_suite_set_pass_cb(tu_case_report_fn_t *cb, void *cb_arg);
+-void tu_suite_set_fail_cb(tu_case_report_fn_t *cb, void *cb_arg);
+-
+-void tu_suite_init(const char *name);
+-void tu_suite_pre_test(void);
+-void tu_suite_post_test(void);
+-void tu_suite_complete(void);
+-
+-struct ts_suite {
+-    SLIST_ENTRY(ts_suite) ts_next;
+-    const char *ts_name;
+-    tu_testsuite_fn_t *ts_test;
+-};
+-
+-SLIST_HEAD(ts_testsuite_list, ts_suite);
+-
+-extern struct ts_testsuite_list *ts_suites;
+-
+-struct ts_config {
+-    int ts_print_results;
+-    int ts_system_assert;
+-
+-    const char *ts_suite_name;
+-
+-    /*
+-     * Called prior to the first test in the suite
+-     */
+-    tu_init_test_fn_t *ts_suite_init_cb;
+-    void *ts_suite_init_arg;
+-
+-    /*
+-     * Called after the last test in the suite
+-     */
+-    tu_init_test_fn_t *ts_suite_complete_cb;
+-    void *ts_suite_complete_arg;
+-
+-    /*
+-     * Called before every test in the suite
+-     */
+-    tu_pre_test_fn_t *ts_case_pre_test_cb;
+-    void *ts_case_pre_arg;
+-
+-    /*
+-     * Called after every test in the suite
+-     */
+-    tu_post_test_fn_t *ts_case_post_test_cb;
+-    void *ts_case_post_arg;
+-
+-    /*
+-     * Called after test returns success
+-     */
+-    tu_case_report_fn_t *ts_case_pass_cb;
+-    void *ts_case_pass_arg;
+-
+-    /*
+-     * Called after test fails (typically thoough a failed test assert)
+-     */
+-    tu_case_report_fn_t *ts_case_fail_cb;
+-    void *ts_case_fail_arg;
+-
+-    /*
+-     * restart after running the test suite - self-test only 
+-     */
+-    tu_suite_restart_fn_t *ts_restart_cb;
+-    void *ts_restart_arg;
+-};
+-
+-int tu_parse_args(int argc, char **argv);
+-int tu_init(void);
+-void tu_restart(void);
+-
+-/*
+- * Public declarations - test case configuration
+- */
+-
+-void tu_case_set_init_cb(tu_init_test_fn_t *cb, void *cb_arg);
+-void tu_case_set_pre_cb(tu_pre_test_fn_t *cb, void *cb_arg);
+-void tu_case_set_post_cb(tu_post_test_fn_t *cb, void *cb_arg);
+-
+-struct tc_config {
+-    /*
+-     * Called to initialize the test case
+-     */
+-    tu_init_test_fn_t *tc_case_init_cb;
+-    void *tc_case_init_arg;
+-
+-    /*
+-     * Called prior to the test case start
+-     */
+-    tu_pre_test_fn_t *tc_case_pre_test_cb;
+-    void *tc_case_pre_arg;
+-
+-    /*
+-     * Called after the test case completes
+-     */
+-    tu_post_test_fn_t *tc_case_post_test_cb;
+-    void *tc_case_post_arg;
+-};
+-
+-void tu_case_init(const char *name);
+-void tu_case_complete(void);
+-void tu_case_pass(void);
+-void tu_case_fail(void);
+-void tu_case_fail_assert(int fatal, const char *file, int line,
+-                         const char *expr, const char *format, ...);
+-void tu_case_write_pass_auto(void);
+-void tu_case_pass_manual(const char *file, int line,
+-                         const char *format, ...);
+-void tu_case_pre_test(void);
+-void tu_case_post_test(void);
+-
+-extern struct tc_config tc_config;
+-extern struct tc_config *tc_current_config;
+-extern struct ts_config ts_config;
+-extern struct ts_config *ts_current_config;
+-
+-extern const char *tu_suite_name;
+-extern const char *tu_case_name;
+-extern int tu_first_idx;
+-
+-extern int tu_any_failed;
+-extern int tu_suite_failed;
+-extern int tu_case_reported;
+-extern int tu_case_failed;
+-extern int tu_case_idx;
+-extern jmp_buf tu_case_jb;
+-
+-#define TEST_SUITE_NAME(suite_name) TEST_SUITE##suite_name
+-
+-#define TEST_SUITE_DECL(suite_name)                         \
+-  extern tu_testsuite_fn_t *TEST_SUITE##suite_name()
+-
+-#define TEST_SUITE(suite_name)                               \
+-void                                                         \
+-TEST_SUITE_##suite_name(void);                               \
+-                                                             \
+-    int                                                      \
+-    suite_name(void)                                         \
+-    {                                                        \
+-        tu_suite_init(#suite_name);                          \
+-        TEST_SUITE_##suite_name();                           \
+-        tu_suite_complete();                                 \
+-                                                             \
+-        return tu_suite_failed;                              \
+-    }                                                        \
+-                                                             \
+-    void                                                     \
+-    TEST_SUITE_##suite_name(void)
+-
+-/*
+- * for creating multiple files with test cases
+- * all belonging to the same suite
+- */
+-#define TEST_CASE_DECL(case_name)                            \
+-    int case_name(void);
+-
+-/*
+- * Unit test definition.
+- */
+-#define TEST_CASE(case_name)                                  \
+-    void TEST_CASE_##case_name(void);                         \
+-                                                              \
+-    int                                                       \
+-    case_name(void)                                           \
+-    {                                                         \
+-        tu_suite_pre_test();                                  \
+-        if (tu_case_idx >= tu_first_idx) {                    \
+-            tu_case_init(#case_name);                         \
+-                                                              \
+-            tu_case_pre_test();                               \
+-            if (setjmp(tu_case_jb) == 0) {                    \
+-                TEST_CASE_##case_name();                      \
+-                tu_case_post_test();                          \
+-                if (!tu_case_failed) {                        \
+-                    tu_case_pass();                           \
+-                }                                             \
+-            }                                                 \
+-            tu_case_complete();                               \
+-        }                                                     \
+-        tu_suite_post_test();                                 \
+-                                                              \
+-        return tu_case_failed;                                \
+-    }                                                         \
+-                                                              \
+-    void                                                      \
+-    TEST_CASE_##case_name(void)
+-
+-#define FIRST_AUX(first, ...) first
+-#define FIRST(...) FIRST_AUX(__VA_ARGS__, _)
+-
+-#define NUM(...) ARG10(__VA_ARGS__, N, N, N, N, N, N, N, N, 1, _)
+-#define ARG10(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, ...) a10
+-
+-#define REST_OR_0(...) REST_OR_0_AUX(NUM(__VA_ARGS__), __VA_ARGS__)
+-#define REST_OR_0_AUX(qty, ...) REST_OR_0_AUX_INNER(qty, __VA_ARGS__)
+-#define REST_OR_0_AUX_INNER(qty, ...) REST_OR_0_AUX_##qty(__VA_ARGS__)
+-#define REST_OR_0_AUX_1(first) 0
+-#define REST_OR_0_AUX_N(first, ...) __VA_ARGS__
+-
+-#define XSTR(s) STR(s)
+-#define STR(s) #s
+-
+-#define TEST_ASSERT_FULL(fatal, expr, ...) do                 \
+-{                                                             \
+-    if (!(expr)) {                                            \
+-        tu_case_fail_assert((fatal), __FILE__,                \
+-                            __LINE__, XSTR(expr),             \
+-                            __VA_ARGS__);                     \
+-    }                                                         \
+-} while (0)
+-
+-#define TEST_ASSERT(...)                                      \
+-    TEST_ASSERT_FULL(0, FIRST(__VA_ARGS__), REST_OR_0(__VA_ARGS__))
+-
+-#define TEST_ASSERT_FATAL(...)                                \
+-    TEST_ASSERT_FULL(1, FIRST(__VA_ARGS__), REST_OR_0(__VA_ARGS__))
+-
+-#define TEST_PASS(...)                                        \
+-    tu_case_pass_manual(__FILE__, __LINE__, __VA_ARGS__);
+-
+-#if MYNEWT_VAL(TEST)
+-#define ASSERT_IF_TEST(expr) assert(expr)
+-#else
+@@ -293,5 +23,0 @@
+-#endif
+-
+-#ifdef __cplusplus
+-}
+-#endif

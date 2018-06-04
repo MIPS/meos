@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="ctx" prefix="CTX" modtype="Functional">
+	<description>Provides an abstraction of the underlying CPU context.
+	<par/>
+	This functionality is used by the kernel to implement tasks. It contains no
+	end user functionality, and you <emph>must not</emph> directly use its
+	facilities.
+	</description>
+	<imports>kernel</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<func name="CTX_attachBGTask" vis="private">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">Background TCB.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(task != NULL)</precondition>
+			</limitations>
+			<description>Attaches the running thread to the
+			specified TCB, filling in as many fields as possible.
+			See the description of <code>CTX_startTask</code> for
+			more details about TCB fields.</description>
+		</func>
+		<func name="CTX_init" vis="private">
+			<voidargs/>
+			<return type="void"/>
+			<description>Implementation specific initialisation
+			function. This <emph>must not</emph> be called by user
+			code.
+			<par/>
+			Typically this should attach <code>
+			_KRN_schedulerISR</code> to the platform specific
+			invocation mechanism.</description>
+		</func>
+		<func name="CTX_remove" vis="virpriv">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">TCB of task to
+			remove</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(task != NULL)</precondition>
+			</limitations>
+			<description>Removes the specified context from
+			circulation after it has been removed from
+			scheduling. Typically this will be a no-op.
+			</description>
+		</func>
+		<func name="CTX_sleep" vis="private">
+			<voidargs/>
+			<return type="void"/>
+			<description>Enters low power sleep, pending
+			interruption.
+			<par/>
+			This marks the end of an interrupt handler, and may not
+			return, depending on implementation. As such it should
+			always be followed by a <code>return</code> statement.
+		</description>
+		</func>
+		<func name="CTX_startTask" vis="private">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">TCB for new task.
+			</arg>
+			<arg type="uintptr_t" name="workspace">Start of stack
+			memory for task.</arg>
+			<arg type="size_t" name="wssize">Length of stack memory
+			in 32-bit words.</arg>
+			<arg type="KRN_TASKFUNC_T *" name="taskfunc">Function
+			to execute in new task.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((task != NULL) &amp;&amp; (workspace != 0) &amp;&amp; (wssize != 0) &amp;&amp; (taskfunc != NULL))</precondition>
+			</limitations>
+			<description>Creates the neccessary context to execute
+			<code>task_func</code> on the specified stack, and
+			attaches the appropriate context switching functions to
+			allow it to be switched.
+			</description>
+		</func>
+		<func name="CTX_verifyTask" vis="private">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">TCB of task to
+			check.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(task != NULL)</precondition>
+			</limitations>
+			<description>Verifies that the specified task has not
+			exceeded its constraints, e.g. stack limits.
+			</description>
+		</func>
+		<func name="CTX_verifySelf" vis="private">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">TCB of task to
+			check.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(task != NULL)</precondition>
+			</limitations>
+			<description>Verifies that the executing code has not
+			exceeded the constraints of the specified task, e.g. stack limits.
+			</description>
+		</func>
+		<postinclude lib="N">meos/target/ctx.h</postinclude>
+	</interface>
+</module>

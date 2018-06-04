@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="ipm" prefix="IPM" modtype="Functional">
+	<description>Provides an abstraction of the underlying interprocessor
+		messaging mechanism.</description>
+	<imports>debug</imports>
+	<imports>irq</imports>
+	<imports>kernel</imports>
+	<imports>lists</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<func name="IPM_recv" vis="virpriv">
+			<arg type="KRN_MSG_T *" name="message" traceable="Y">Message to send.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(message != NULL)</precondition>
+			</limitations>
+			<description>Receive and process an inter-processor message from another core.</description>
+		</func>
+		<func name="IPM_send" vis="virpriv">
+			<arg type="KRN_MSG_T *" name="message" traceable="Y">Message to send.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(message != NULL)</precondition>
+			</limitations>
+			<description>Send an inter-processor message to another core.  This message should be accepted as quickly as possible, since this function should block and never fail.</description>
+		</func>
+		<func name="IPM_start" vis="virpriv">
+			<voidargs/>
+			<return type="void"/>
+			<description>Implementation specific initialisation
+			function. This <emph>must not</emph> be called by user
+			code.
+			<par/>
+			Typically this will initialise a handler for incoming messages, which should deliver messages to <code>IPM_recv</code>.</description>
+		</func>
+		<epilogue>
+#ifndef MEOS_NO_FUNCS
+#ifdef CONFIG_FEATURE_IMPEXP
+void _KRN_recv(KRN_MSG_T *message);
+inline static void IPM_recv(KRN_MSG_T *message)
+{
+	_KRN_recv(message);
+}
+void IPM_send(KRN_MSG_T *message);
+void IPM_start(void);
+#else
+void IPM_recv(KRN_MSG_T * message);
+void IPM_send(KRN_MSG_T *message);
+void IPM_start(void);
+#endif
+#endif
+#ifdef CONFIG_DEBUG_IMPEXP_LOGGING
+#include "meos/inttypes.h"
+static inline void _IPM_impexpDebug(char *type, KRN_MSG_T * message)
+{
+	char sub[256], *subw = sub;
+	const char *name;
+	const char *commandNames[] = {
+		"KRN_RESPONSE_ACK",
+		"KRN_RESPONSE_NACK",
+		"KRN_RESPONSE_NOTIFY",
+		"KRN_COMMAND_SEMAPHORE_TEST",
+		"KRN_COMMAND_SEMAPHORE_SET",
+		"KRN_COMMAND_LOCK",
+		"KRN_COMMAND_UNLOCK",
+		"KRN_COMMAND_FLAGCLUSTER_TEST",
+		"KRN_COMMAND_FLAGCLUSTER_SET",
+		"KRN_COMMAND_FLAGCLUSTER_TOGGLE",
+		"KRN_COMMAND_FLAGCLUSTER_CLEAR",
+		"KRN_COMMAND_MAILBOX_GET",
+		"KRN_COMMAND_MAILBOX_PUT",
+		"KRN_COMMAND_POOL_TAKE",
+		"KRN_COMMAND_POOL_RETURN",
+		"KRN_COMMAND_SYNC",
+		"KRN_COMMAND_WQ_QUEUE",
+		"KRN_COMMAND_MEM_ANNOUNCE",
+		"KRN_COMMAND_IMPORT_PROBE",
+		"UPDATE IMPEXP DEBUG LIST!"
+	};
+	sub[0] = 0;
+	if (message->subCmd &amp; KRN_SUBCOMMAND_OK)
+		subw += sprintf(subw, "OK ");
+	if (message->subCmd &amp; KRN_SUBCOMMAND_FAIL)
+		subw += sprintf(subw, "FAIL ");
+	if (message->subCmd &amp; KRN_SUBCOMMAND_WAIT)
+		subw += sprintf(subw, "WAIT ");
+	if (message->subCmd &amp; KRN_SUBCOMMAND_FLAGCLUSTER_ANY)
+		subw += sprintf(subw, "ANY ");
+	if (message->subCmd &amp; KRN_SUBCOMMAND_FLAGCLUSTER_CLEAR)
+		subw += sprintf(subw, "CLEAR ");
+
+	if (_KRN_current == NULL)
+		name = "Unknown task";
+	else if (_KRN_current->name != NULL)
+		name = _KRN_current->name;
+	else
+		name = "Unnamed task";
+
+	DBG_logF("%" PRIu32 " %s %s %d-&gt;%d\t%" PRId32 "&lt;=&gt;%" PRId32 "\t%" PRIu32 "\t%s\t%s\t%016" PRIx64 "\t%016" PRIx64 "\n",
+		 KRN_proc(), name, type, message->from, message->to, message->cID,
+		 message->sID, message->seq, commandNames[message->cmd], sub,
+		 message->p64a, message->p64b);
+}
+#else
+#define _IPM_impexpDebug(T, M)
+#endif
+		</epilogue>
+	</interface>
+</module>

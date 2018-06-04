@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="mq" prefix="MQ" modtype="Functional">
+	<description>A VRing compatible message queue implementation. Please note that this module defines an abstract class. Implementations will follow the same API, but with a different function prefix.</description>
+	<imports>debug</imports>
+	<imports>irq</imports>
+	<imports>kernel</imports>
+	<imports>lists</imports>
+	<interface>
+		<prologue>
+struct MQ_tag;
+struct MQ_MSG_tag;
+struct VIRTIO_net_hdr_tag;
+		</prologue>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="Y">string.h</include>
+		<include lib="N">meos/debug/dbg.h</include>
+		<include lib="N">meos/lists/lst.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">meos/irq/irq.h</include>
+		<define><c>MQ_USED_NO_NOTIFY_FLAG (1)</c>Specify that the notification should not be performed upon adding a used message.</define>\
+		<define><c>MQ_AVAILABLE_NO_INTERRUPT_FLAG (1)</c>Specify that an interrupt should not be generated upon adding an available message.</define>
+		<define><c>MQ_DESC_F_NEXT (1)</c>Specify that an available descriptor continues in another descriptor.</define>
+		<define><c>MQ_DESC_F_WRITE (2)</c>Specify that an available descriptor is write only.</define>
+		<define><c>VIRTIO_REG_MAGICVALUE 0x000</c>Offset of Virtio MMIO MagicValue register.</define>
+		<define><c>VIRTIO_REG_VERSION 0x004</c>Offset of Virtio MMIO Version register.</define>
+		<define><c>VIRTIO_REG_DEVICEID 0x008</c>Offset of Virtio MMIO DeviceID register.</define>
+		<define><c>VIRTIO_REG_VENDORID 0x00c</c>Offset of Virtio MMIO VendorID register.</define>
+		<define><c>VIRTIO_REG_DEVICEFEATURES 0x010</c>Offset of Virtio MMIO DeviceFeatures register.</define>
+		<define><c>VIRTIO_REG_DEVICEFEATURESSEL 0x014</c>Offset of Virtio MMIO DeviceFeaturesSel register.</define>
+		<define><c>VIRTIO_REG_DRIVERFEATURES 0x020</c>Offset of Virtio MMIO DriverFeatures register.</define>
+		<define><c>VIRTIO_REG_DRIVERFEATURESSEL 0x024</c>Offset of Virtio MMIO DriverFeaturesSel register.</define>
+		<define><c>VIRTIO_REG_QUEUESEL 0x030</c>Offset of Virtio MMIO QueueSel register.</define>
+		<define><c>VIRTIO_REG_QUEUENUMMAX 0x034</c>Offset of Virtio MMIO QueueNumMax register.</define>
+		<define><c>VIRTIO_REG_QUEUENUM 0x038</c>Offset of Virtio MMIO QueueNum register.</define>
+		<define><c>VIRTIO_REG_QUEUEREADY 0x044</c>Offset of Virtio MMIO QueueReady register.</define>
+		<define><c>VIRTIO_REG_QUEUENOTIFY 0x050</c>Offset of Virtio MMIO QueueNotify register.</define>
+		<define><c>VIRTIO_REG_INTERRUPTSTATUS 0x060</c>Offset of Virtio MMIO InterruptStatus register.</define>
+		<define><c>VIRTIO_REG_INTERRUPTACK 0x064</c>Offset of Virtio MMIO InterruptACK register.</define>
+		<define><c>VIRTIO_REG_STATUS 0x070</c>Offset of Virtio MMIO Status register.</define>
+		<define><c>VIRTIO_REG_QUEUEDESCLOW 0x080</c>Offset of Virtio MMIO QueueDescLow register.</define>
+		<define><c>VIRTIO_REG_QUEUEDESCHIGH 0x084</c>Offset of Virtio MMIO QueueDescHigh register.</define>
+		<define><c>VIRTIO_REG_QUEUEAVAILLOW 0x090</c>Offset of Virtio MMIO QueueAvailLow register.</define>
+		<define><c>VIRTIO_REG_QUEUEAVAILHIGH 0x094</c>Offset of Virtio MMIO QueueAvailHigh register.</define>
+		<define><c>VIRTIO_REG_QUEUEUSEDLOW 0x0a0</c>Offset of Virtio MMIO QueueUsedLow register.</define>
+		<define><c>VIRTIO_REG_QUEUEUSEDHIGH 0x0a4</c>Offset of Virtio MMIO QueueUsedHigh register.</define>
+		<define><c>VIRTIO_REG_CONFIGGENERATION 0x0fc</c>Offset of Virtio MMIO ConfigGeneration register.</define>
+		<define><c>VIRTIO_REG_CONFIG 0x100</c>Offset of Virtio MMIO Config registers.</define>
+		<define><c>VIRTIO_REG_CONSOLE_COLS 0x100</c>Offset of Virtio console cols register.</define>
+		<define><c>VIRTIO_REG_CONSOLE_ROWS 0x102</c>Offset of Virtio console rows register.</define>
+		<define><c>VIRTIO_REG_CONSOLE_MAX_NR_PORTS 0x104</c>Offset of Virtio console max_nr_ports register.</define>
+		<define><c>VIRTIO_REG_CONSOLE_EMERG_WR 0x108</c>Offset of Virtio console emerg_wr register.</define>
+		<define><c>VIRTIO_REG_NET_MAC 0x100</c>Offset of Virtio net mac registers.</define>
+		<define><c>VIRTIO_REG_NET_STATUS 0x106</c>Offset of Virtio net status register.</define>
+		<define><c>VIRTIO_STATUS_ACKNOWLEDGE 1</c>Virtio status field ACKNOWLEDGE bit.</define>
+		<define><c>VIRTIO_STATUS_DRIVER 2</c>Virtio status field DRIVER bit.</define>
+		<define><c>VIRTIO_STATUS_DRIVER_OK 4</c>Virtio status field DRIVER_OK bit.</define>
+		<define><c>VIRTIO_STATUS_FEATURES_OK 8</c>Virtio status field FEATURES_OK bit.</define>
+		<define><c>VIRTIO_STATUS_DEVICE_NEEDS_RESET 64</c>Virtio status field DEVICE_NEEDS_RESET bit.</define>
+		<define><c>VIRTIO_STATUS_FAILED 128</c>Virtio status field FAILED bit.</define>
+		<define><c>VIRTIO_INT_USED_RING_UPDATE 0</c>Virtio MMIO InterruptStatus Used Ring Update bit.</define>
+		<define><c>VIRTIO_INT_CONFIGURATION_CHANGE 1</c>Virtio MMIO InterruptStatus Configuration Change bit.</define>
+		<define><c>VIRTIO_FLAG_VERSION_1 1</c>Virtio feature VIRTIO_F_VERSION_1 bit.</define>
+		<define><c>VIRTIO_FLAG_CONSOLE_SIZE 1</c>Virtio console feature VIRTIO_CONSOLE_F_SIZE bit.</define>
+		<define><c>VIRTIO_FLAG_CONSOLE_MULTIPORT 2</c>Virtio console feature VIRTIO_CONSOLE_F_MULTIPORT bit.</define>
+		<define><c>VIRTIO_FLAG_CONSOLE_EMERG_WRITE 4</c>Virtio console feature VIRTIO_CONSOLE_F_EMERG_WRITE bit.</define>
+		<define><c>VIRTIO_FLAG_NET_MAC 0x20</c>Virtio net feature VIRTIO_NET_F_MAC bit.</define>
+		<define><c>VIRTIO_FLAG_NET_STATUS 0x10000</c>Virtio net feature VIRTIO_NET_F_STATUS bit.</define>
+		<define><c>VIRTIO_DEV_NET 1</c>Virtio net device ID.</define>
+		<define><c>VIRTIO_DEV_BLOCK 2</c>Virtio block device ID.</define>
+		<define><c>VIRTIO_DEV_CONSOLE 3</c>Virtio console device ID.</define>
+		<define><c>VIRTIO_DEV_ENTROPY 4</c>Virtio entropy source device ID.</define>
+		<define><c>VIRTIO_DEV_MEM_BALLOON_TRAD 5</c>Virtio memory ballooning (traditional) device ID.</define>
+		<define><c>VIRTIO_DEV_IOMEM 6</c>Virtio I/O memory device ID.</define>
+		<define><c>VIRTIO_DEV_RPMSG 7</c>Virtio rpmsg device ID.</define>
+		<define><c>VIRTIO_DEV_SCSI 8</c>Virtio SCSI host device ID.</define>
+		<define><c>VIRTIO_DEV_9P 9</c>Virtio 9P transport device ID.</define>
+		<define><c>VIRTIO_DEV_WLAN 10</c>Virtio mac80211 wlan device ID.</define>
+		<define><c>VIRTIO_DEV_RPROC_SERIAL 11</c>Virtio rproc serial device ID.</define>
+		<define><c>VIRTIO_DEV_CAIF 12</c>Virtio CAIF device ID.</define>
+		<define><c>VIRTIO_DEV_MEM_BALLOON 13</c>Virtio memory balloon device ID.</define>
+		<define><c>VIRTIO_DEV_GPU 16</c>Virtio GPU device ID.</define>
+		<define><c>VIRTIO_DEV_TIMER 17</c>Virtio timer/clock device ID.</define>
+		<define><c>VIRTIO_DEV_INPUT 18</c>Virtio input device ID.</define>
+		<define><c>VIRTIO_DEV_MIPS 0x153f</c>MIPS Tech, LLC vendor ID.</define>
+		<define><c>VIRTIO_STATUS_RESET(V) ((V)->status == 0)</c>Evaluate to true if <code>V</code> is in reset.</define>
+		<define><c>VIRTIO_STATUS_NEGOTIATE(V) ((V)->status == (VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER))</c>Evaluate to true if <code>V</code> is negotiating.</define>
+		<define><c>VIRTIO_STATUS_INITIALISE(V) ((V)->status == (VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_FEATURES_OK))</c>Evaluate to true if <code>V</code> is initialised.</define>
+		<define><c>VIRTIO_STATUS_RUNNING(V) ((V)->status == (VIRTIO_STATUS_ACKNOWLEDGE | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_FEATURES_OK | VIRTIO_STATUS_DRIVER_OK))</c>Evaluate to true if <code>V</code> is running.</define>
+		<typedef vis="anonymous"><c>struct VIRTIO_net_hdr_tag VIRTIO_NET_HDR_T</c>
+			Virtio network packet header. See http://docs.oasis-open.org/virtio/virtio/v1.0/cs04/virtio-v1.0-cs04.html#x1-1680006
+		</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+			<tab/>uint64_t address;<nl/>
+			<tab/>uint32_t length;<nl/>
+			<tab/>uint16_t flags;<nl/>
+			<tab/>uint16_t next;<nl/>
+		} MQ_DESC_T</c>vring_desc compatible descriptor.</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+			<tab/>uint16_t flags;<nl/>
+			<tab/>uint16_t index;<nl/>
+			<tab/>uint16_t ring[];<nl/>
+		} MQ_AVAIL_T</c>vring_avail compatible available ring.</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+			<tab/>uint32_t id;<nl/>
+			<tab/>uint32_t length;<nl/>
+		} MQ_USED_ELEM_T</c>c>vring_used.ring compatible used element.</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+			<tab/>uint16_t flags;<nl/>
+			<tab/>uint16_t index;<nl/>
+			<tab/>MQ_USED_ELEM_T ring[];<nl/>
+		} MQ_USED_T</c>vring_used compatible used ring.</typedef>
+		<typedef vis="private"><c>void (MQ_NOTIFY_T)(struct MQ_tag *mq)</c>Message queue callback. Called when a message queue receives an interrupt.</typedef>
+		<typedef vis="private"><c>void (MQ_CALLBACK_T)(struct MQ_tag *mq, void *cbPar)</c>Message queue callback. User code called when a message queue receives an interrupt.</typedef>
+		<typedef><c>int MQ_XFERFUNC_T(void *address, void* buffer, int size, int n, void *priv)</c>
+			Generic read/write function.
+		</typedef>
+		<typedef vis="private"><c>struct MQ_tag {<nl/>
+			<tab/>LST_LINK;<nl/>
+			<parahead/>
+			<tab/>volatile uint32_t size;<nl/>
+			<tab/>volatile MQ_DESC_T *descriptors;<nl/>
+			<tab/>volatile MQ_AVAIL_T *available;<nl/>
+			<tab/>volatile MQ_USED_T *used;<nl/>
+			<tab/>uint16_t lastAvailable;<nl/>
+			<tab/>uint16_t lastUsed;<nl/>
+			<tab/>uint16_t freeDescs;<nl/>
+			<tab/>LST_T chain;<nl/>
+			<tab/>IRQ_DESC_T *shin;<nl/>
+			<tab/>KRN_POOL_T *hpool;<nl/>
+			<tab/>KRN_TASKQ_T wq;<nl/>
+			<tab/>MQ_NOTIFY_T *notify;<nl/>
+			<tab/>MQ_CALLBACK_T *callback;<nl/>
+			<tab/>void *cbPar;<nl/>
+			<paratail/>
+		} MQ_T</c>Message queue common.</typedef>
+		<typedef vis="private"><c>struct MQGUEST_tag {<nl/>
+			<tab/>struct MQ_tag mq;<nl/>
+			<parahead/>
+			<tab/>IRQ_DESC_T *kick;<nl/>
+			<paratail/>
+		} MQGUEST_T</c>RProc compatible guest queue.</typedef>
+		<typedef vis="private"><c>struct MQHOST_tag {<nl/>
+			<tab/>struct MQ_tag mq;<nl/>
+			<parahead/>
+			<tab/>IRQ_DESC_T *kick;<nl/>
+			<tab/>KRN_POOL_T *mpool;<nl/>
+			<tab/>size_t msize;<nl/>
+			<paratail/>
+		} MQHOST_T</c>MEOS import/export host queue. Pairs with <code>MQGUEST_T</code>.</typedef>
+		<typedef vis="private"><c>struct MQDEVICE_tag {<nl/>
+			<tab/>struct MQ_tag mq;<nl/>
+			<parahead/>
+			<tab/>KRN_POOL_T *mpool;<nl/>
+			<tab/>size_t msize;<nl/>
+			<tab/>uint32_t *qNotify;<nl/>
+			<tab/>uint32_t qNum;<nl/>
+			<paratail/>
+		} MQDEVICE_T</c>Virtio compatible device queue. For use by drivers.</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+	        <tab/>KRN_POOLLINK;<nl/>
+	        <parahead/>
+	        <tab/>int autoRel;<nl/>
+	        <paratail/>
+		} MQ_HOSTHEADER_T;</c>Poolable VRing compatible message header. Useful for allocating host buffers.</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+		<parahead/>
+		<tab/>MQ_HOSTHEADER_T header;<nl/>
+		<tab/>uint8_t buffer[40];<nl/>
+		<paratail/>
+		} MQ_HOSTBUF_T;</c>Poolable VRing compatible message. Useful for allocating host buffers.</typedef>
+		<typedef vis="private"><c>struct __attribute__ ((__packed__)) MQ_MSG_tag {<nl/>
+			<tab/>KRN_POOLLINK;<nl/>
+			<parahead/>
+			<tab/>uint16_t token;<nl/>
+			<tab/>uint16_t length;<nl/>
+			<tab/>void *buffer;<nl/>
+			<tab/>struct MQ_MSG_tag *next;<nl/>
+			<tab/>uint32_t write;<nl/>
+			<paratail/>
+		} MQ_MSG_T</c>Internal buffer used by MQ_T.</typedef>
+		<func name="MQ_addAvailable" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to add to.</arg>
+			<arg type="MQ_MSG_T *" name="msg" traceable="Y">Message to add.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (msg != NULL))</precondition>
+			</limitations>
+			<description>Low level message add available.</description>
+		</func>
+		<func name="MQ_getFirstAvailable" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<arg type="uint16_t *" name="flags">Out parameter to store vring flags.</arg>
+			<return type="uint16_t">Descriptor index of fetched message</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL) &amp;&amp; (flags != NULL))</precondition>
+			</limitations>
+			<description>Low level message get available. Fetches the first link of a chain.</description>
+		</func>
+		<func name="MQ_getMoreAvailable" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uint16_t" name="token">Descriptor index of previously fetched link.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<arg type="uint16_t *" name="flags">Out parameter to store vring flags.</arg>
+			<return type="uint16_t">Descriptor index of fetched message</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL) &amp;&amp; (flags != NULL))</precondition>
+			</limitations>
+			<description>Low level message get available. Fetches next link of a chain.</description>
+		</func>
+		<func name="MQ_getNextAvailable" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to add to.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Low level message get available. Terminates fetching a chain.</description>
+		</func>
+		<func name="MQ_getAvailable" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<return type="uint16_t">Descriptor index of fetched message.</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL))</precondition>
+			</limitations>
+			<description>Low level message get available. Fetches a 1 message chain.</description>
+		</func>
+		<func name="MQ_chainAvailable" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to get available from.</arg>
+			<arg type="uint16_t" name="last">Descriptor index of previous message in chain.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<return type="uint16_t">Descriptor index of fetched message</return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL) &amp;&amp; (flags != NULL))</precondition>
+			</limitations>
+			<description>Low level message chain and add available. Forges a new link in a chain.</description>
+		</func>
+		<func name="MQ_addUsed" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to add used to.</arg>
+			<arg type="uint16_t" name="id">Descriptor index of message to add.</arg>
+			<arg type="uint32_t" name="size">Number of bytes used.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL))</precondition>
+			</limitations>
+			<description>Low level message add used.</description>
+		</func>
+		<func name="MQ_getUsed" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to get used from.</arg>
+			<arg type="uintptr_t *" name="buffer">Out parameter to store physical address of buffer.</arg>
+			<arg type="uintptr_t *" name="size">Out parameter to store size of <code>buffer</code>.</arg>
+			<return type="uint32_t">
+                                <enum>
+                                        <item val="Non-zero (TRUE)">Message fetched.</item>
+                                        <item val="0 (FALSE)">Get failed.</item>
+                                </enum>
+                        </return>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size != NULL))</precondition>
+			</limitations>
+			<description>Low level message get used.</description>
+		</func>
+		<func name="MQ_init" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to initialise</arg>
+			<arg type="KRN_POOL_T *" name="hpool"  traceable="Y">Pool of MQ_MSG_Ts for message queue. The number of headers in this pool determines the size of the message queue.</arg>
+			<arg type="void *" name="buffer">Shared buffer to store message queue in, should be page aligned.</arg>
+			<arg type="size_t" name="pagesize">Page size for platform.</arg>
+			<arg type="IRQ_DESC_T *" name="shin" traceable="Y">Incoming IRQ descriptor from global memory.</arg>
+			<arg type="IRQ_DESC_T *" name="kick" traceable="Y">Outgoing IRQ descriptor from global memory.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (hpool != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (pagesize != 0) &amp;&amp; (kick != NULL))</precondition>
+			</limitations>
+			<description>Make Virtio queue owned by another processor available.</description>
+		</func>
+		<func name="MQ_initAddr" vis="virpriv">
+			<arg type="MQ_T *" name="mq"  traceable="Y">Message queue to initialise</arg>
+			<arg type="KRN_POOL_T *" name="hpool"  traceable="Y">Pool of MQ_MSG_Ts for message queue. The number of headers in this pool determines the size of the message queue.</arg>
+			<arg type="uintptr_t" name="descriptors">Offset of descriptors in reader/writer address space.</arg>
+			<arg type="uintptr_t" name="available">Offset of available ring in reader/writer address space.</arg>
+			<arg type="uintptr_t" name="used">Offset of used ring in reader/writer address space.</arg>
+			<arg type="void *" name="r">Reader function.</arg>
+			<arg type="void *" name="rp">Reader function private data.</arg>
+			<arg type="void *" name="w">Writer function.</arg>
+			<arg type="void *" name="wp">Writer function private data.</arg>
+			<arg type="size_t" name="pagesize">Page size for platform.</arg>
+			<arg type="IRQ_DESC_T *" name="shin" traceable="Y">Incoming IRQ descriptor from global memory.</arg>
+			<arg type="void *" name="kick" traceable="Y">Kick function.</arg>
+			<arg type="void *" name="kickp" traceable="Y">Kick function private data.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (hpool != NULL) &amp;&amp; (descriptors != 0) &amp;&amp; (available != 0) &amp;&amp; (used != 0) &amp;&amp; (r != NULL) &amp;&amp; (w != NULL)  &amp;&amp; (pagesize != 0))</precondition>
+			</limitations>
+			<description>Make a virtual Virtio accessed by read/write functions available.</description>
+		</func>
+		<func name="MQ_initHost" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to initialise.</arg>
+			<arg type="KRN_POOL_T *" name="hpool" traceable="Y">Pool of headers for message queue. The number of headers in this pool determines the size of the message queue.</arg>
+			<arg type="void *" name="buffer">Shared buffer to store message queue in, should be page aligned.</arg>
+			<arg type="size_t" name="pagesize">Page size for platform.</arg>
+			<arg type="IRQ_DESC_T *" name="shin" traceable="Y">Incoming IRQ descriptor from global memory.</arg>
+			<arg type="IRQ_DESC_T *" name="kick" traceable="Y">Outgoing IRQ descriptor from global memory.</arg>
+			<arg type="KRN_POOL_T *" name="mpool" traceable="Y">Pool of MQ_HOSTBUF_Ts for message queue. This <emph>must</emph> contain the same number of items as <code>hpool</code>.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (hpool != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (pagesize != 0) &amp;&amp; (shin != NULL) &amp;&amp; (kick != NULL) &amp;&amp; (mpool != NULL))</precondition>
+			</limitations>
+			<description>Host a Virtio queue.</description>
+		</func>
+		<func name="MQ_notify" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to notify.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Notify a Virtio queue that processing may be required.</description>
+		</func>
+		<func name="MQ_remainingAvailable" vis="virtual">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to query.</arg>
+			<return type="size_t">Number of descriptors available.</return>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Query the number of available descriptors waiting on <code>mq</code>.</description>
+		</func>
+		<func name="MQ_remainingUsed" vis="virtual">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to query.</arg>
+			<return type="size_t">Number of descriptors available.</return>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Query the number of used descriptors waiting on <code>mq</code>.</description>
+		</func>
+		<func name="MQ_take" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to take from.</arg>
+			<arg type="int32_t" name="timeout">Timeout.</arg>
+			<return type="MQ_MSG_T *"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Allocate a buffer in preparation for sending on <code>mq</code>. If no buffers are available, will wait as specified by timeout. Generates appropriate interrupts.</description>
+		</func>
+		<func name="MQ_takeMore" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to take from.</arg>
+			<arg type="MQ_MSG_T *" name="prev" traceable="Y">Previous message.</arg>
+			<arg type="int32_t" name="timeout">Timeout.</arg>
+			<return type="MQ_MSG_T *"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (msg != NULL))</precondition>
+			</limitations>
+			<description>Allocate a buffer in preparation for sending on <code>mq</code>, and chain onto the sequences started by <code>first</code>. If no buffers are available, will wait as specified by timeout. Generates appropriate interrupts.</description>
+		</func>
+		<func name="MQ_send" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to send on.</arg>
+			<arg type="MQ_MSG_T *" name="first" traceable="Y">Message to send.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (msg != NULL))</precondition>
+			</limitations>
+			<description>Send previously allocated message chain. Generates appropriate interrupts.</description>
+		</func>
+		<func name="MQ_recv" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to receive from.</arg>
+			<arg type="int32_t" name="timeout">Timeout.</arg>
+			<return type="MQ_MSG_T *"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Receives a message from <code>mq</code>. If no messages are available, will wait as specified by timeout. Generates appropriate interrupts.</description>
+		</func>
+		<func name="MQ_recvMore" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to receive from.</arg>
+			<arg type="MQ_MSG_T *" name="prev" traceable="Y">Previous message.</arg>
+			<arg type="int32_t" name="timeout">Timeout.</arg>
+			<return type="MQ_MSG_T *"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Receives a message from <code>mq</code>. Will return <code>NULL</code> if there are no more messages in this sequence. If no messages are available, will wait as specified by timeout. Generates appropriate interrupts.</description>
+		</func>
+		<func name="MQ_return" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to return message to.</arg>
+			<arg type="MQ_MSG_T *" name="msg" traceable="Y">Message to return.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (msg != NULL))</precondition>
+			</limitations>
+			<description>Returns a received message, releasing the associated buffers. Generates appropriate interrupts.</description>
+		</func>
+		<func name="MQ_setCallback" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to return message to.</arg>
+			<arg type="MQ_CALLBACK_T *" name="callback">Callback to call.</arg>
+			<arg type="void *" name="cbPar">Parameter for callback function.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(mq != NULL)</precondition>
+			</limitations>
+			<description>Set a callback to be called when the message queue receives an interrupt.</description>
+		</func>
+		<func name="MQ_autoRel" vis="virpriv">
+			<arg type="MQ_T *" name="mq" traceable="Y">Message queue to clean.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((mq != NULL) &amp;&amp; (msg != NULL))</precondition>
+			</limitations>
+			<description>Scan the head of the used part of <code>mq</code> for releasable buffers. This happens automatically if interrupts are enabled.</description>
+		</func>
+		<epilogue>
+			static inline void *MQ_MSG_data(MQ_MSG_T *msg) {return msg->buffer;}
+			static inline size_t MQ_MSG_length(MQ_MSG_T *msg) {return msg->length;}
+			static inline uint32_t MQ_MSG_set(MQ_MSG_T *msg, size_t length, void *data) {if (length > msg->length) return 0; else {msg->length = length; memcpy(msg->buffer, data, length); return 1;}}
+
+			size_t MQGUEST_remainingAvailable(MQGUEST_T * mqt);
+			void MQGUEST_addAvailable(MQGUEST_T * mqt, MQ_MSG_T * msg);
+			uint16_t MQGUEST_getFirstAvailable(MQGUEST_T * mqt, uintptr_t * buffer, size_t * length, uint16_t * flags);
+			uint16_t MQGUEST_getMoreAvailable(MQGUEST_T * mqt, uint16_t token, uintptr_t * buffer, size_t * length, uint16_t * flags);
+			void MQGUEST_getNextAvailable(MQGUEST_T * mqt);
+			uint16_t MQGUEST_getAvailable(MQGUEST_T * mqt, uintptr_t * buffer, size_t * length);
+			uint16_t MQGUEST_chainAvailable(MQGUEST_T * mqt, uint16_t last, uintptr_t * buffer, size_t * length);
+			size_t MQGUEST_remainingUsed(MQGUEST_T * mqt);
+			void MQGUEST_addUsed(MQGUEST_T * mqt, uint16_t id, uint32_t length);
+			uint32_t MQGUEST_getUsed(MQGUEST_T * mqt, uintptr_t * buffer, size_t * length);
+			void MQGUEST_notify(MQGUEST_T * mqt);
+			MQ_MSG_T *MQGUEST_take(MQGUEST_T * mqt, int32_t timeout);
+			void MQGUEST_send(MQGUEST_T * mqt, MQ_MSG_T * msg);
+			MQ_MSG_T *MQGUEST_recv(MQGUEST_T * mqt, int32_t timeout);
+			void MQGUEST_return(MQGUEST_T * mqt, MQ_MSG_T * msg);
+			void MQGUEST_setCallback(MQGUEST_T * mqt, MQ_CALLBACK_T * cb, void *cbPar);
+			void MQGUEST_init(MQGUEST_T * mq, KRN_POOL_T * hpool, void *buffer, size_t pagesize, IRQ_DESC_T * shin, IRQ_DESC_T * kick);
+
+			size_t MQHOST_remainingAvailable(MQHOST_T * mqt);
+			void MQHOST_addAvailable(MQHOST_T * mqt, MQ_MSG_T * msg);
+			uint16_t MQHOST_getFirstAvailable(MQHOST_T * mqt, uintptr_t * buffer, size_t * length, uint16_t * flags);
+			uint16_t MQHOST_getMoreAvailable(MQHOST_T * mqt, uint16_t token, uintptr_t * buffer, size_t * length, uint16_t * flags);
+			void MQHOST_getNextAvailable(MQHOST_T * mqt);
+			uint16_t MQHOST_getAvailable(MQHOST_T * mqt, uintptr_t * buffer, size_t * length);
+			uint16_t MQHOST_chainAvailable(MQHOST_T * mqt, uint16_t last, uintptr_t * buffer, size_t * length);
+			size_t MQHOST_remainingUsed(MQHOST_T * mqt);
+			void MQHOST_addUsed(MQHOST_T * mqt, uint16_t id, uint32_t length);
+			uint32_t MQHOST_getUsed(MQHOST_T * mqt, uintptr_t * buffer, size_t * length);
+			void MQHOST_autoRel(MQHOST_T * mqt);
+			void MQHOST_notify(MQHOST_T * mqt);
+			MQ_MSG_T *MQHOST_take(MQHOST_T * mqt, int32_t timeout);
+			MQ_MSG_T *MQHOST_takeMore(MQHOST_T * mqt, MQ_MSG_T * last, int32_t timeout);
+			void MQHOST_send(MQHOST_T * mqt, MQ_MSG_T * msg);
+			MQ_MSG_T *MQHOST_recv(MQHOST_T * mqt, int32_t timeout);
+			void MQHOST_return(MQHOST_T * mqt, MQ_MSG_T * msg);
+			void MQHOST_setCallback(MQHOST_T * mqt, MQ_CALLBACK_T * cb, void *cbPar);
+			void MQHOST_init(MQHOST_T * mq, KRN_POOL_T * hpool, void *buffer, size_t pagesize, IRQ_DESC_T * shin, IRQ_DESC_T * kick,KRN_POOL_T * mpool);
+
+			size_t MQDEVICE_remainingAvailable(MQDEVICE_T * mqt);
+			void MQDEVICE_addAvailable(MQDEVICE_T * mqt, MQ_MSG_T * msg);
+			uint16_t MQDEVICE_getFirstAvailable(MQDEVICE_T * mqt, uintptr_t * buffer, size_t * length, uint16_t * flags);
+			uint16_t MQDEVICE_getMoreAvailable(MQDEVICE_T * mqt, uint16_t token, uintptr_t * buffer, size_t * length, uint16_t * flags);
+			void MQDEVICE_getNextAvailable(MQDEVICE_T * mqt);
+			uint16_t MQDEVICE_getAvailable(MQDEVICE_T * mqt, uintptr_t * buffer, size_t * length);
+			uint16_t MQDEVICE_chainAvailable(MQDEVICE_T * mqt, uint16_t last, uintptr_t * buffer, size_t * length);
+			size_t MQDEVICE_remainingUsed(MQDEVICE_T * mqt);
+			void MQDEVICE_addUsed(MQDEVICE_T * mqt, uint16_t id, uint32_t length);
+			uint32_t MQDEVICE_getUsed(MQDEVICE_T * mqt, uintptr_t * buffer, size_t * length);
+			void MQDEVICE_autoRel(MQDEVICE_T * mqt);
+			void MQDEVICE_notify(MQDEVICE_T * mqt);
+			MQ_MSG_T *MQDEVICE_take(MQDEVICE_T * mqt, int32_t timeout);
+			MQ_MSG_T *MQDEVICE_takeMore(MQDEVICE_T * mqt, MQ_MSG_T * last, int32_t timeout);
+			void MQDEVICE_send(MQDEVICE_T * mqt, MQ_MSG_T * msg);
+			MQ_MSG_T *MQDEVICE_recv(MQDEVICE_T * mqt, int32_t timeout);
+			void MQDEVICE_return(MQDEVICE_T * mqt, MQ_MSG_T * msg);
+			void MQDEVICE_setCallback(MQDEVICE_T * mqt, MQ_CALLBACK_T * cb, void *cbPar);
+			void MQDEVICE_init(MQDEVICE_T * mq, KRN_POOL_T * hpool,
+					   void *buffer, size_t pagesize, IRQ_DESC_T * shin,
+					   uint32_t *vAddr, uint32_t queueNum, KRN_POOL_T * mpool, size_t msize);
+
+			struct VIRTIO_net_hdr_tag {
+				uint8_t flags;
+				uint8_t gso_type;
+				uint16_t hdr_len;
+				uint16_t gso_size;
+				uint16_t csum_start;
+				uint16_t csum_offset;
+				uint16_t num_buffers;
+			};
+		</epilogue>
+	</interface>
+</module>

@@ -1,0 +1,20 @@
+menuconfig DRIVER_TCPSOCKET
+bool "TCP socket"
+default Y
+select DRIVER_UART
+help
+	UART compliant driver that communicates over a TCP/IP socket.
+
+config DRIVER_TCPSOCKET_TX_BUFFER
+int "Default Tx buffer size"
+default 32768
+depends on DRIVER_TCPSOCKET
+help
+	Default transmission buffer size. May be overridden by initialisation.
+
+config DRIVER_TCPSOCKET_RX_BUFFER
+int "Default Rx buffer size"
+default 32768
+depends on DRIVER_TCPSOCKET
+help
+	Default transmission buffer size. May be overridden by initialisation.

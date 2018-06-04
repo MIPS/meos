@@ -1,0 +1,124 @@
+menuconfig FATFS
+bool "FatFs R0.12c"
+default n
+depends on MASS
+help
+	Build FatFs.
+
+if FATFS
+
+config FATFS_SRC
+string "FatFs URL"
+default "http://elm-chan.org/fsw/ff/"
+help
+	URL stem to download FatFs from. Must include trailing /.
+
+config FATFS_RO
+bool "Read only"
+default n
+
+choice
+	prompt "Minimize"
+	default FATFS_MIN_0
+
+	config FATFS_MIN_0
+	bool "No minimisation"
+
+	config FATFS_MIN_1
+	bool "Remove f_stat(), f_getfree(), f_unlink(), f_mkdir(), f_truncate() and f_rename()."
+
+	config FATFS_MIN_2
+	bool "As above, minus f_opendir(), f_readdir() and f_closedir()"
+
+	config FATFS_MIN_3
+	bool "As above, minus f_lseek()"
+endchoice
+
+choice
+	prompt "String functions"
+	default FATFS_STR_2
+
+	config FATFS_STR_0
+	bool "No string functions"
+
+	config FATFS_STR_1
+	bool "String functions without line ending conversion"
+
+	config FATFS_STR_2
+	bool "String functions with line ending conversion"
+endchoice
+
+choice
+	prompt "Find first/next"
+	default FATFS_FIND_2
+
+	config FATFS_FIND_0
+	bool "No f_findfirst()/f_findnext()"
+
+	config FATFS_FIND_1
+	bool "f_findfirst()/f_findnext()"
+
+	config FATFS_FIND_2
+	bool "f_findfirst()/f_findnext() with altname"
+endchoice
+
+config FATFS_MKFS
+bool "Make filesystem"
+default y
+
+config FATFS_FASTSEEK
+bool "Fast seek"
+default n
+
+config FATFS_EXPAND
+bool "Expand"
+default n
+
+config FATFS_CHMOD
+bool "Attributes"
+depends on !FATFS_RO
+default n
+
+config FATFS_LABEL
+bool "Volume labelling"
+default y
+
+config FATFS_FORWARD
+bool "Forward"
+default n
+
+config FATFS_RPATH
+bool "Relative paths"
+default y
+
+config FATFS_MPART
+bool "Multiple partitions"
+default n
+
+config FATFS_TRIM
+bool "Trim"
+default y
+
+choice
+	prompt "Free space info"
+	default FATFS_FSINFO_0
+
+	config FATFS_FSINFO_0
+	bool "Use free cluster count from FSINFO if available"
+
+	config FATFS_FSINFO_1
+	bool "Ignore free cluster count from FSINFO"
+
+	config FATFS_FSINFO_2
+	bool "Use last allocated cluster number from FSINFO if available"
+
+	config FATFS_FSINFO_3
+	bool "Ignore last allocated cluster number from FSINFO"
+
+endchoice
+
+config FATFS_LOCKS
+int "Locks"
+default 4
+
+endif

@@ -1,0 +1,717 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="mvz" prefix="MVZ" modtype="Functional">
+	<description>The MIPS Embedded Hypervisor.</description>
+	<imports>lists</imports>
+	<interface>
+		<prologue>
+struct MVZ_vregs_tag;
+		</prologue>
+		<include lib="Y">stdint.h</include>
+		<include lib="Y">mips/m32c0.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<typedef><c>enum {<nl/>
+			<tab/>MVZ_GUEST_FLAG_SAVETLBS=1<nl/>
+		} MVZ_GUEST_FLAG_T</c>Control options for <code>MVZ_GUEST_T</code>.
+		<par/>
+		<code>MVZ_GUEST_FLAG_SAVETLBS</code> indicates that guest TLB entries should be saved on context switch. This is required for guests that use the TLB, but do not use a refill handler.
+		</typedef>
+		<typedef><c>enum {<nl/>
+			<tab/>MVZ_MEM_FLAG_WI=0x00000004,<nl/>
+			<tab/>MVZ_MEM_FLAG_RI=0x80000000,<nl/>
+			<tab/>MVZ_MEM_FLAG_XI=0x40000000,<nl/>
+			<tab/>MVZ_MEM_FLAG_ALLOWALL=0<nl/>
+		} MVZ_MEM_FLAG_T</c>Control options for memory mappings.
+		<par/>
+		<code>MVZ_MEM_FLAG_WI</code> indicates that writes are inhibited to the mapping, <code>MVZ_MEM_FLAG_RI</code> indicates that reads are inhibited, <code>MVZ_MEM_FLAG_XI</code> indicates that execution from the mapping is inhibited. <code>MVZ_MEM_FLAG_ALLOWALL</code> allows all types of access.
+		</typedef>
+
+		<typedef vis="anonymous"><c>struct MVZ_tag MVZ_T</c>
+			Hypervisor static data.
+		</typedef>
+		<typedef vis="anonymous"><c>struct MVZ_guest_tag MVZ_GUEST_T</c>
+			Per guest data.
+		</typedef>
+		<typedef vis="anonymous"><c>struct MVZ_pte_tag MVZ_PTE_T</c>
+			Virtual page table entry descriptor.
+		</typedef>
+		<typedef><c>int MVZ_XFERFUNC_T(void *address, void* buffer, int size, int n, void *priv)</c>
+			HAL style generic read/write function.
+		</typedef>
+		<typedef><c>void MVZ_PREPAREFUNC_T(struct MVZ_vregs_tag *regs)</c>
+			Prepare function, called when a guest is about to reactivate. Allows virtual devices to refresh their state.
+		</typedef>
+		<typedef vis="anonymous"><c>struct MVZ_vregs_tag {
+			LST_LINK;
+			<parahead/>
+			uintptr_t start;
+			uintptr_t stop;
+			MVZ_GUEST_T *guest;
+			MVZ_XFERFUNC_T *read;
+			MVZ_XFERFUNC_T *write;
+			MVZ_PREPAREFUNC_T *prepare;
+			void *priv;
+			<paratail/>
+		} MVZ_VREGS_T</c>
+			Virtual register descriptor. Registers are between guest physical addresses <code>.start</code> and <code>.end</code>. Generic read/write functions <code>.read</code> and <code>.write</code> will be invoked for reads to/from registers. <code>.prepare</code> will be called when a guest is switched in, prior to context activation.
+		</typedef>
+		<typedef><c>void MVZ_STARTFUNC_T(MVZ_GUEST_T *)</c>
+			Start function, called on cold start of a guest and upon soft restart. If restart is not possible, should handle appropriately.
+		</typedef>
+		<typedef><c>int32_t MVZ_STOPFUNC_T(MVZ_GUEST_T *, int32_t exitcode)</c>
+			Stop function, called when a guest terminates. <code>exitcode</code> contains a status code. Returns 0 if the guest should be descheduled, otherwise it will be assumed to have been restarted.
+		</typedef>
+		<typedef><c>void MVZ_BREAK_T(MVZ_GUEST_T *, void *priv)</c>
+			<code>BREAK</code> handler.
+		</typedef>
+		<func name="MVZ_addMapping">
+			<arg type="MVZ_PTE_T *" name="pte">Pointer to PTE entry.</arg>
+			<arg type="uintptr_t" name="paddr">Root physical address of mapping.</arg>
+			<arg type="size_t" name="length">Length of mapping in bytes.</arg>
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uintptr_t" name="gpaddr">Guest physical address of mapping.</arg>
+			<arg type="MVZ_MEM_FLAG_T" name="flags">Flags for mapping.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((pte != NULL) &amp;&amp; (length &gt; 0) &amp;&amp; (guest != NULL) &amp;&amp; ((flags &amp; ~(MVZ_MEM_FLAG_RI | MVZ_MEM_FLAG_WI | MVZ_MEM_FLAG_XI)) == 0))</precondition>
+			</limitations>
+			<description>This function creates a dynamic memory mapping.
+			<par/>
+			It initialises <code>pte</code> with a dynamic memory mapping and adds it to <code>guest</code>. <code>paddr</code> and <code>gpaddr</code> should be aligned to twice the page size, and <code>length</code> should be a multiple of twice the page size. Guest access is determined by <code>flags</code>. This should be <code>MVZ_MEM_FLAG_ALLOWALL</code>, unless you need greater restrictions. Attempts by a guest to perform a disallowed access will result in an assert failing if enabled, otherwise the guest will be restarted.
+			<par/>
+			Mappings installed with this function will be used if a Guest Physical Address to Root Physical Address translation misses. This allows the running of large systems with complex memory layouts or many guests. Smaller systems should configure static memory mappings using <code>MVZ_fixMapping</code>.
+			<par/>
+			To use this function, the <code>Dynamic TLB</code> configuration option must be set. This function should only be called during guest initialisation.
+		 	</description>
+		</func>
+		<func name="MVZ_addRegs">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="MVZ_VREGS_T *" name="regs">Pointer to virtual register descriptor.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((guest != NULL) &amp;&amp; (regs != NULL) &amp;&amp; (((regs->read == NULL) &amp;&amp; (regs->write == NULL)) || ((regs->read != NULL) &amp;&amp; (regs->write != NULL))))</precondition>
+			</limitations>
+			<description>
+				Attach virtual registers <code>regs</code> to <code>guest</code>. <code>regs</code> should be filled in prior to being passed to this function, and subsequently not modified.
+				<par/>
+				Registers will be between guest physical addresses <code>.start</code> and <code>.end</code>. Generic read/write functions <code>.read</code> and <code>.write</code> will be invoked for reads to/from registers. If these are <code>NULL</code>, the registers will not appear in the memory map.
+				<par/>
+				<code>.prepare</code> will be called when a guest is switched in, prior to context activation.
+				<par/>
+				This function should only be called during guest initialisation.
+			</description>
+		</func>
+		<func name="MVZ_cache" vis="private">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="reg_t" name="eva">Non-zero if an EVA cache operation should be performed.</arg>
+			<arg type="reg_t" name="op">Cache operation to perform.</arg>
+			<arg type="uintptr_t" name="gvaddr">Guest virtual address where operation should be performed.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Performs cache operation <code>op</code> at
+			guest virtual address <code>gvaddr</code>. If
+			<code>eva</code> is non-zero, the <code>CACHEE</code>
+			opcode will be emitted, otherwise the <code>CACHE</code>
+			opcode will be used. This only effects one cache line.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_cp0Ctx" vis="virtual">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<return type="struct vzguestctx *">Context for guest CP0 registers.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Returns the CP0 context for a guest. The context may then be modified to effect the guest.
+			<par/>
+			 This function should only be called from a guest's <code>start</code> function.</description>
+		</func>
+		<func name="MVZ_debugGuest">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="MVZ_BREAK_T *" name="debugger">Pointer to breakpoint handler function</arg>
+			<arg type="void *" name="debugPriv">Private data for <code>debugger</code>.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((guest != NULL) &amp;&amp; (debugger != NULL))</precondition>
+			</limitations>
+			<description>
+				Attach a function to be called when the guest encounters a <code>BREAK</code> instruction.
+			</description>
+		</func>
+		<func name="MVZ_downInt">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uint32_t" name="i">Guest interrupt to unassert.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>
+				Unassert interrupt <code>i</code> within <code>guest</code>.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_fixMapping">
+			<arg type="uint32_t *" name="index">Pointer to TLB index variable.</arg>
+			<arg type="uintptr_t" name="paddr">Root physical address of mapping.</arg>
+			<arg type="size_t" name="length">Length of mapping in bytes.</arg>
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uintptr_t" name="gpaddr">Guest physical address of mapping.</arg>
+			<arg type="MVZ_MEM_FLAG_T" name="flags">Flags for mapping.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((index != NULL) (length &gt; 0) &amp;&amp; (guest != NULL) &amp;&amp; ((flags &amp; ~(MVZ_MEM_FLAG_RI | MVZ_MEM_FLAG_WI | MVZ_MEM_FLAG_XI)) == 0))</precondition>
+			</limitations>
+			<description>Insert static mappings for <code>guest</code> into the root TLB, starting at <code>*index</code>. <code>*index</code> will be postincremented. <code>paddr</code> and <code>gpaddr</code> should be aligned to twice the page size, and <code>length</code> should be a multiple of twice the page size. Guest access is determined by <code>flags</code>. This should be <code>MVZ_MEM_FLAG_ALLOWALL</code>, unless you need greater restrictions. Attempts by a guest to perform a disallowed access will result in an assert failing if enabled, otherwise the guest will be restarted.
+			<par/>
+			The number of mappings that can be installed will be severely limited by the geometry of your TLB. This is suitable for small, fixed systems, with simple memory layouts. Larger systems should configure dynamic memory mappings using <code>MVZ_addMapping</code>.
+			<par/>
+			To use this function, the <code>Dynamic TLB</code> configuration option must not be set. This function should only be called during guest initialisation.</description>
+		</func>
+		<func name="MVZ_gpCtx" vis="virtual">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<return type="struct gpctx *">Context for guest general purpose registers.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Returns the general purpose context for a guest. The context may then be modified to effect the guest.
+			<par/>
+			 This function should only be called from a guest's <code>start</code> function.</description>
+		</func>
+		<func name="MVZ_gstrlen" vis="private">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gvaddr">Guest virtual address of string.</arg>
+			<return type="size_t">Length of string at guest virtual address.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>WARNING! DO NOT USE IN A PRODUCTION SYSTEM!
+			This function is a security risk! It performs an
+			<par/>
+			unbounded operation on guest memory, which provides an
+			attack surface a compromised guest may use as part of a
+			privilege escalation attack.
+			<par/>
+			This function walks the string at <code>gvaddr</code> in
+			guest memory to determine it's length.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_gv2gp">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uintptr_t" name="gva">Guest virtual address.</arg>
+			<arg type="uintptr_t *" name="glen">Pointer for length out parameter.</arg>
+			<arg type="uint32_t *" name="cca">Pointer for cache coherency attribute out parameter.</arg>
+			<return type="uintptr_t">Guest physical address (or
+                        <code>-1</code> to indicate error).</return>
+			<limitations>
+			<precondition>((guest != NULL) &amp;&amp; (glen != NULL) &amp;&amp; (cca != NULL))</precondition>
+			</limitations>
+			<description>
+				Looks up guest virtual address <code>gva</code> in the guest TLB. Returns the guest physical address. Additionally places the number of bytes remaining in the mapping into <code>glen</code> and the cache coherency attributes into <code>cca</code>.
+				<par/>
+				If <code>gva</code> does not map, the function
+				does nothing except return the error code
+				<code>-1</code>.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_hypervise">
+			<arg type="MVZ_T *" name="mvz">Pointer to hypervisor object.</arg>
+			<arg type="KRN_ISRFUNC_T *" name="hypcall">Pointer to <code>HYPCALL</code> handler ISR.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(mvz != NULL)</precondition>
+			</limitations>
+			<description>Initialises the hypervisor module. This
+			function must be called once only, before any other
+			hypervisor function is used.
+			<par/>
+			The <code>mvz</code> argument points to a data object
+			which is used by the hypervisor for its private state
+			data. Do not access it directly, except to pass its
+			address to this function.
+			<par/>
+			The <code>hypcall</code> argument points to a handler
+			ISR that will be invoked when a guest executes the
+			<code>hypcall</code> instruction. This should be one of
+			the following:
+			<enum>
+				<item val="MVZ_HR">Treat all hypercalls as anomalous and restart the guest.</item>
+				<item val="MVZ_HLT">Treat all hypercalls as hyperlibrary invocations.</item>
+				<item val="MVZ_UHI">Treat all hypercalls as UHI operations. This opens a potential security hole, and should not be used on production systems.</item>
+				<item val="MVZ_UHIHLT">Support both hyperlibrary invocations and UHI operations. This opens a potential security hole, and should not be used on production systems.</item>
+				<item val="Other">Call a user provided handler to deal with a system call.</item>
+			</enum>
+			The handler should not increment the program counter in
+			the calling context. MVZ will do so automatically.
+			</description>
+		</func>
+		<func name="MVZ_initGuest">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uint32_t" name="gid">Guest ID for guest.</arg>
+			<arg type="MVZ_STARTFUNC_T *" name="start">(Re)start function for guest.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((guest != NULL) &amp;&amp; (gid &gt; 0) &amp;&amp; (start != NULL))</precondition>
+			</limitations>
+			<description>
+				Initialises <code>guest</code>, assigning it guest ID <code>gid</code>, and associates the <code>start</code> function with it. <code>gid</code> must be unique amongst the running guests. MVZ will not enforce this, but failure to ensure uniqueness will rapidly lead to unpredictable failure.
+				<par/>
+				This function does not start the guest. You may use other functions (e.g. <code>MVZ_addMapping</code>, <code>MVZ_fixMapping</code>, <code>MVZ_addRegs</code>) to add resources to the guest. <code>MVZ_startGuest</code> will start the guest and schedule it for execution.
+				<par/>
+				When the guest is started, restarted, or otherwise resets, <code>start</code> will be called. This function should perform the necessary operations to initialise and reset guest execution state, e.g. injecting code, setting initial registers, etc.
+			</description>
+		</func>
+		<func name="MVZ_intMap">
+			<arg type="IRQ_DESC_T *" name="irq">Pointer to root interrupt descriptor to map.</arg>
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((irq != NULL) &amp;&amp; (guest != NULL))</precondition>
+			</limitations>
+			<description>
+				Assigns the root interrupt described by <code>irq</code> to <code>guest</code>. The interrupt will subsequently be routed to the guest. Attempting to map the same interrupt mulitple times with different descriptors will lead to unpredictable failure.
+				<par/>
+				The mapping is exclusive, the interrupt may not be shared between guests, or between the root and guests. This function should only be called during guest initialisation.
+			</description>
+		</func>
+		<func name="MVZ_intSet">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uint32_t" name="i">Guest interrupt to assert</arg>
+			<return type="reg_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Interrupt asserted.</item>
+					<item val="0 (FALSE)">Interrupt clear.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>
+				Return true if interrupt <code>i</code> is asserted within <code>guest</code>.
+				<par/>
+				This only applies to virtual interrupts signalled and cleared with <code>MVZ_upInt</code> and <code>MVZ_downInt</code>. Mapped interrupts may not be interrogated via this interface.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_loadELF">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="MVZ_XFERFUNC_T" name="read">Read function.</arg>
+			<arg type="void *" name="priv">Private data for read function.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((guest != NULL) &amp;&amp; (read != NULL))</precondition>
+			</limitations>
+			<description>Reads an ELF file using <code>read</code>
+			and writes it into the memory of <code>guest</code>.
+			</description>
+		</func>
+		<func name="MVZ_nextStep" vis="private">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<return type="void"/>
+			<description>
+				Unknown, appears related to stepping logic. Possibly fosil code.
+			</description>
+		</func>
+		<func name="MVZ_readGP">
+			<arg type="void *" name="paddr">GPA to read from.</arg>
+			<arg type="void *" name="buf">RVA to write to.</arg>
+			<arg type="int" name="size">Size of element to read.</arg>
+			<arg type="int" name="n">Number of elements to read.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to read from.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>((buf != NULL) &amp;&amp; (priv != NULL))</precondition>
+			</limitations>
+			<description>Read from uncached guest memory. Returns the amount of data read.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_readGPC">
+			<arg type="void *" name="paddr">GPA to read from.</arg>
+			<arg type="void *" name="buf">RVA to write to.</arg>
+			<arg type="int" name="size">Size of element to read.</arg>
+			<arg type="int" name="n">Number of elements to read.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to read from.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>((buf != NULL) &amp;&amp; (priv != NULL))</precondition>
+			</limitations>
+			<description>Read from cached guest memory. Returns the amount of data read.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_readGV">
+			<arg type="void *" name="paddr">GVA to read from.</arg>
+			<arg type="void *" name="buf">RVA to write to.</arg>
+			<arg type="int" name="size">Size of element to read.</arg>
+			<arg type="int" name="n">Number of elements to read.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to read from.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>((buf != NULL) &amp;&amp; (priv != NULL))</precondition>
+			</limitations>
+			<description>Read from guest memory, using CCAs from TLB. Returns the amount of data read.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_restart">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Reboot the guest if possible.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_runStep" vis="private">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<return type="reg_t">Unknown</return>
+			<description>
+				Unknown, appears related to stepping logic. Possibly fosil code.
+			</description>
+		</func>
+		<func name="MVZ_setFlags" vis="virtual">
+			<arg type="size_t" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="MVZ_GUEST_FLAG_T" name="flags">Flag value.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((guest != NULL) &amp;&amp; ((flags &amp; ~(MVZ_GUEST_FLAG_SAVETLBS)) == 0))</precondition>
+			</limitations>
+			<description>Set flags for <code>guest</code>.
+			<par/>
+			The <code>MVZ_GUEST_FLAG_SAVETLBS</code> flag indicates that guest TLB entries should be saved on context switch. This is required for guests that use the TLB, but do not use a refill handler. This adds a substantial run time penalty, so should be avoided if possible.
+			<par/>
+			This function should only be called during guest initialisation.
+			</description>
+		</func>
+		<func name="MVZ_splitTLBs">
+			<arg type="size_t" name="root">Number of TLB entries to reserve for the root.</arg>
+			<return type="void"/>
+			<description>
+			Split the TLB between the root and the guest.
+			<par/>
+			Only some implementations of the VZ ASE shared a TLB. You should only call this function if your target does.
+			<par/>
+			This function should be called during system initialisation.
+			</description>
+		</func>
+		<func name="MVZ_startGuest">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="KRN_PRIORITY_T" name="priority">Guest priority.</arg>
+			<arg type="const char *" name="guestname"><code>NUL</code>code> terminated
+			task name string, or <code>NULL</code> if unnamed.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>
+			Starts a guest. The guest must first be initialised by
+			<code>MVZ_initGuest</code>. The guest executes its
+			associated <code>start</code> function at the root
+			level, before switching to guest mode to begin
+			virtual machine execution.
+			Control information for the scheduler is placed in the
+			<code>guest</code> object, which must not be altered
+			while the guest is running.
+			<par/>
+			The guest <code>priority</code> must lie in the range
+			<code>KRN_LOWEST_PRIORITY</code> to <code>(maxPriority -
+			1)</code>, where <code>maxPriority</code> is the value
+			provided to <code>KRN_reset</code>. The function will
+			adjust invalid <code>priority</code> arguments to
+			ensure that are within the permitted range
+			<par/>
+			The <code>guestname</code> parameter points to a
+			<code>NUL</code> terminated character string defining a
+			name for the guest. Guest names are not essential. If
+			a guest does not have a name, then <code>guestname</code> absolutely
+			<emph>must</emph> be <code>NULL</code>.
+			</description>
+		</func>
+		<func name="MVZ_step" vis="private">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uintptr_t" name="addr">Unknown</arg>
+			<return type="void"/>
+			<description>
+				Unknown, appears related to stepping logic. Possibly fosil code.
+			</description>
+		</func>
+		<func name="MVZ_UHIHLT">
+			<arg type="int" name="sigNum">Interrupt/exception signal number.</arg>
+			<arg type="struct gpctx *" name="ctx">Interrupt context.</arg>
+			<return type="void"/>
+			<description>Handles a hypercall for the current guest
+			in context <code>ctx</code>. Supports both UHI and
+			hyperlibrary hypercalls.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_upInt">
+			<arg type="MVZ_GUEST_T *" name="guest">Pointer to per guest data.</arg>
+			<arg type="uint32_t" name="i">Guest interrupt to assert</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>
+				Assert interrupt <code>i</code> within <code>guest</code>.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_writeGP">
+			<arg type="void *" name="paddr">GPA to write to.</arg>
+			<arg type="void *" name="buf">RVA to read from.</arg>
+			<arg type="int" name="size">Size of element to write.</arg>
+			<arg type="int" name="n">Number of elements to write.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to write to.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>((buf != NULL) &amp;&amp; ((size * n) &gt; 0) &amp;&amp; (priv != NULL))</precondition>
+			</limitations>
+			<description>Write to guest memory. Returns the amount of data written.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_writeGPC">
+			<arg type="void *" name="paddr">GPA to write to.</arg>
+			<arg type="void *" name="buf">RVA to read from.</arg>
+			<arg type="int" name="size">Size of element to write.</arg>
+			<arg type="int" name="n">Number of elements to write.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to write to.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>((buf != NULL) &amp;&amp; ((size * n) &gt; 0) &amp;&amp; (priv != NULL))</precondition>
+			</limitations>
+			<description>Write to cached guest memory. Returns the amount of data written.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_writeGV">
+			<arg type="void *" name="paddr">GVA to write to.</arg>
+			<arg type="void *" name="buf">RVA to read from.</arg>
+			<arg type="int" name="size">Size of element to write.</arg>
+			<arg type="int" name="n">Number of elements to write.</arg>
+			<arg type="void *" name="priv"><code>MVZ_GUEST_T</code> to write to.</arg>
+			<return type="int"/>
+			<limitations>
+			<precondition>((buf != NULL) &amp;&amp; ((size * n) &gt; 0) &amp;&amp; (priv != NULL))</precondition>
+			</limitations>
+			<description>Write to guest memory, using CCAs from TLB. Returns the amount of data written.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_xfer">
+			<arg type="MVZ_XFERFUNC_T *" name="r">Pointer to a generic read/write function for reading.</arg>
+			<arg type="void *" name="rp">Private data for <code>r</code>.</arg>
+			<arg type="uintptr_t" name="ro">Starting offset to pass to <code>r</code>.</arg>
+			<arg type="size_t" name="size">Number of bytes to transfer.</arg>
+			<arg type="MVZ_XFERFUNC_T *" name="w">Pointer to a generic read/write function for writing.</arg>
+			<arg type="void *" name="wp">Private data for <code>w</code>.</arg>
+			<arg type="uintptr_t" name="wo">Starting offset to pass to <code>w</code>.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((r != NULL) &amp;&amp; (size &gt; 0) &amp;&amp; (w != NULL))</precondition>
+			</limitations>
+			<description>
+				Transfer <code>size</code> bytes of data from a generic read function to a generic write function.
+				<par/>
+				It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_zeroGP">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gpaddr">GPA to start zeroing.</arg>
+			<arg type="size_t" name="amount">Number of bytes to zero.</arg>
+			<return type="size_t">Number of bytes zeroed.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Zeroes <code>amount</code> bytes of uncached guest
+			memory at <code>gpaddr</code>.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_zeroGPC">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gpaddr">GPA to start zeroing.</arg>
+			<arg type="size_t" name="amount">Number of bytes to zero.</arg>
+			<return type="size_t">Number of bytes zeroed.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Zeroes <code>amount</code> bytes of cached guest
+			memory at <code>gpaddr</code>.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="MVZ_zeroGV">
+			<arg type="MVZ_GUEST_T *" name="guest" traceable="Y">Pointer to guest.</arg>
+			<arg type="uintptr_t" name="gvaddr">GVA to start zeroing.</arg>
+			<arg type="size_t" name="amount">Number of bytes to zero.</arg>
+			<return type="size_t">Number of bytes zeroed.</return>
+			<limitations>
+			<precondition>(guest != NULL)</precondition>
+			</limitations>
+			<description>Zeroes <code>amount</code> bytes of guest
+			memory at <code>gvaddr</code>, using CCAs from TLB.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+	<epilogue>
+
+#undef CONFIG_MVZ_PAGESIZE
+#ifdef CONFIG_MVZ_4KB_PAGES
+#define CONFIG_MVZ_PAGESIZE (4 * 1024)
+#endif
+#ifdef CONFIG_MVZ_16KB_PAGES
+#define CONFIG_MVZ_PAGESIZE (16 * 1024)
+#endif
+#ifdef CONFIG_MVZ_256KB_PAGES
+#define CONFIG_MVZ_PAGESIZE (256 * 1024)
+#endif
+#ifdef CONFIG_MVZ_1MB_PAGES
+#define CONFIG_MVZ_PAGESIZE (1 * 1024 * 1024)
+#endif
+#ifdef CONFIG_MVZ_4MB_PAGES
+#define CONFIG_MVZ_PAGESIZE (4 * 1024 * 1024)
+#endif
+#ifdef CONFIG_MVZ_16MB_PAGES
+#define CONFIG_MVZ_PAGESIZE (16 * 1024 * 1024)
+#endif
+#ifdef CONFIG_MVZ_64MB_PAGES
+#define CONFIG_MVZ_PAGESIZE (64 * 1024 * 1024)
+#endif
+#ifdef CONFIG_MVZ_256MB_PAGES
+#define CONFIG_MVZ_PAGESIZE (256 * 1024 * 1024)
+#endif
+#ifndef CONFIG_MVZ_PAGESIZE
+#define CONFIG_MVZ_PAGESIZE (16 * 1024)
+#endif
+
+struct MVZ_tag {
+	PARAHEAD
+	struct vzrootctx protoroot;
+	struct vzguestctxmax protoguest;
+	void (*hyper)(int SigNum, struct gpctx *c);
+	size_t ntlbs;
+	size_t ngtlbs;
+	uint8_t maxgid;
+	uint32_t maxpm;
+	uintptr_t dealias;
+	IRQ_DESC_T gexc;
+	IRQ_DESC_T tlexc;
+	IRQ_DESC_T tsexc;
+#ifdef CONFIG_LWIP
+	LST_T nets;
+#endif
+	PARATAIL
+};
+
+extern MVZ_T *_MVZ;
+
+struct  MVZ_guest_tag {
+	struct KRN_task_tag	task;
+	PARAHEAD
+	uint8_t gid;
+	MVZ_GUEST_FLAG_T flags;
+	struct vzrootctx root;
+	struct vzguestctxmax guest;
+	struct vztlbctxmax tlbs;
+
+	uint8_t stepInstr[8];
+	uintptr_t stepAddr;
+
+	reg_t ipti;
+#ifdef CONFIG_MVZ_BROKEN_TIMERS
+	KRN_TIMER_T ccTimer;
+#endif
+
+	reg_t intMask;
+	LST_T mappings;
+	MVZ_STARTFUNC_T *start;
+	MVZ_STOPFUNC_T *stop;
+	size_t argc;
+	char **argv;
+	MVZ_BREAK_T *debugger;
+	void *debugPriv;
+	PARATAIL
+};
+
+struct MVZ_pte_tag {
+	LST_LINK;
+	PARAHEAD;
+	uintptr_t start;
+	uintptr_t stop;
+	reg_t paddr;
+	reg_t flags;
+	PARATAIL;
+};
+
+static inline void MVZ_exit(MVZ_GUEST_T *guest, int32_t exitcode)
+{
+	if (!guest->stop(guest, exitcode))
+		KRN_removeTask((KRN_TASK_T*)guest);
+}
+
+#define MVZ_setFlags(GUEST, VALUE) do {(GUEST)->flags = (VALUE);} while (0)
+#define MVZ_gpCtx(X) ((X)->task.savedContext.gp)
+#define MVZ_cp0Ctx(X) ((X)->guest)
+
+void MVZ_stick(MVZ_GUEST_T * gt, uintptr_t addr);
+
+struct RSP_tag;
+
+typedef void (RSP_WRITEFUNC_T) (struct RSP_tag * rsp, uint8_t byte);
+typedef uint8_t(RSP_READFUNC_T) (struct RSP_tag * rsp);
+typedef void(RSP_INJFUNC_T) (struct RSP_tag * rsp, uintptr_t addr);
+
+typedef struct RSP_tag {
+	RSP_WRITEFUNC_T *writeChar;
+	RSP_READFUNC_T *readChar;
+	uint8_t writeCheckSum;
+	uint8_t readCheckSum;
+	char startChar;
+	size_t writeOffset;
+	sreg_t writeLen;
+	int (*readMem)(void *, void *, int, int, void*);
+	void *readPriv;
+	int (*writeMem)(void *, void *, int, int, void*);
+	void *writePriv;
+	uintptr_t stepAddr;
+	RSP_INJFUNC_T *inject;
+	uintptr_t *breakTable;
+	size_t nBreaks;
+	reg_t broken;
+} RSP_T;
+
+void RSP_init(RSP_T * rsp,
+	      RSP_READFUNC_T * readChar, RSP_WRITEFUNC_T * writeChar,
+	      uintptr_t * breakTable, size_t nBreaks);
+void RSP_setRW(RSP_T *rsp, int (*r)(void *, void *, int, int, void*), void *rp, int (*w)(void *, void *, int, int, void*), void *wp);
+void RSP_loop(RSP_T * rsp, int sig, struct gpctx *ctx);
+void RSP_break(RSP_T * rsp, int sig);
+	</epilogue>
+	</interface>
+</module>

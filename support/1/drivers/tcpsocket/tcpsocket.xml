@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="tcpsocket" prefix="TCPSOCKET" modtype="Special">
+	<description>Implements a UART driver that communicates via a TCP socket.</description>
+	<imports>kernel</imports>
+	<imports>uart</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">meos/uart/uart.h</include>
+		<typedef>
+			<c>struct TCPSOCKET_tag TCPSOCKET_T</c>(Incomplete) TCP socket UART system object definition.
+		</typedef>
+		<func name="TCPSOCKET_init">
+			<arg type="TCPSOCKET_T *" name="uart" traceable="Y">Pointer to TCP socket UART system object.</arg>
+			<arg type="uint8_t *" name="txBuf">Transmission byte buffer.</arg>
+			<arg type="size_t" name="txLen">Number of bytes in <code>txBuf</code>.</arg>
+			<arg type="uint8_t *" name="rxBuf">Receive byte buffer.</arg>
+			<arg type="size_t" name="rxLen">Number of bytes in <code>rxBuf</code>.</arg>
+			<arg type="KRN_TASK_T *" name="rxTask">Socket reader TCB.</arg>
+			<arg type="uint32_t *" name="rxStack">Pointer to socket reader task workspace (stack).</arg>
+			<arg type="size_t" name="rxStackSize">Size (in 32 bit words) of workspace.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((uart != NULL) &amp;&amp; (txBuf != NULL) &amp;&amp; (txLen > 0) &amp;&amp; (rxBuf != NULL) &amp;&amp; (rxLen > 0))</precondition>
+			</limitations>
+			<description>Initialises the UART described by <code>uart</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+
+#include "lwip/api.h"
+
+/* complete the TCP socket_T definition... */
+struct TCPSOCKET_tag {
+	UART_T	uart;
+	const char *name;
+	const char *interface;
+	const uint32_t port;
+	struct netconn *conn;
+};
+		</epilogue>
+	</interface>
+</module>

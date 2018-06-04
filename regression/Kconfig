@@ -1,0 +1,259 @@
+config BROKEN_PRINTF
+bool
+help
+	Some configurations break their libc, and thus cause the test suite to
+	break in exciting ways. This disables the test suite.
+
+menu "Tests"
+	depends on !BROKEN_PRINTF
+
+	config SIMULATED_TESTING
+	bool "Simulated testing"
+	default y if QUICK_SIM
+	default n
+	help
+		Use the simulator for testing. For MIPS, CONFIG_MIPS_MODEL
+		specifies the simulator model to use. Requires Codescape
+		Professional.
+
+	config ACQUIRE_FOR_TEST
+	bool "Acquire probe for testing"
+	default y if QUICK_PROBE
+	default n
+	help
+		Automatically acquire a probe for testing. For MIPS,
+		CONFIG_MIPS_MODEL specifies either a bitstream or a board to
+		use.
+
+	menu "Basic"
+
+		config TEST_lsttest
+		bool "Single linked list test"
+		default y
+		help
+			A basic functionality test for the LST module.
+
+		config TEST_dqtest
+		bool "Double linked queue test"
+		default y
+		help
+			A basic functionality test for the DQ module.
+
+		config TEST_tretest
+		bool "Tree test"
+		default y
+		help
+			A basic functionality test for the TRE module.
+
+		config TEST_cppbuild
+		bool "C++ build test"
+		default y
+		help
+			This test ensures that the MEOS headers are compatible with C++.
+
+		config TEST_warning
+		bool "Warning test"
+		depends on DEBUG_DIAGNOSTICS
+		default y
+		help
+			Test DBG_warning interception.
+
+		config TEST_noisy_stack
+		bool "Noisy stack test"
+		default y
+		help
+			Test that task initialisation functions can deal with stack noise.
+
+		config TEST_stack_overflow
+		bool "Stack overflow test"
+		default y
+		depends on DEBUG_DIAGNOSTICS && !ARCH_LINUX
+		help
+			Test that stack overflows may be detected.
+
+		config TEST_infwait
+		bool "Infinite wait test"
+		default y
+		help
+			Test that infinite waits work as expected.
+
+		config TEST_timisrorder
+		bool "Timer ISR order test"
+		depends on TIMISR
+		default y
+		help
+			Test that timer ISRs occur in activation order.
+
+		config TEST_takepool_int
+		bool "KRN_takePool in ISR test"
+		default y
+		help
+			Ensure that KRN_takePool works from an ISR.
+
+		config TEST_error
+		bool "Error test"
+		depends on DEBUG_DIAGNOSTICS
+		default y
+		help
+			Test DBG_assert interception.
+
+		config TEST_coverage
+		bool "Coverage test"
+		depends on DEBUG_DIAGNOSTICS
+		default n if DEBUG_PARANOIA
+		default y
+		help
+			This test unit tests all the base modules, and some glue code. It
+			should cover almost all non-interprocessor related code.
+
+		config TEST_lazy
+		bool "Lazy context switching test"
+		depends on !SIMULATED_TESTING
+		default y
+		help
+			Test lazy context switching.
+
+		config TEST_isr_schedule
+		bool "ISR scheduling test"
+		default y
+		help
+			Ensure that scheduling within an interrupt behaves as expected.
+
+		config TEST_unaligned_task
+		bool "Unaligned task test"
+		default y
+		help
+			Test that MEOS will deal with unaligned task stacks correctly.
+
+		config TEST_raiseipl_timeout
+		bool "Raise IPL timeout test"
+		default y
+		help
+			This test ensures that timeouts during raised IPL behave properly.
+
+		config TEST_intsynth
+		bool "Interrupt synthesis test"
+		depends on TEST_INTSYNTH_ENABLE
+		default y
+		help
+			This test ensures that synthesised interrupts are routed to the core.
+
+		config TEST_softint
+		bool "Soft interrupt test"
+		default y
+		help
+			This test ensures that soft interrupts work.
+
+		config TEST_sync
+		bool "Sync test"
+		default y
+		help
+			This test ensures that KRN_sync() works.
+
+	endmenu
+
+	menu "FPU"
+
+		config TEST_FPU_paranoia
+		bool "FPU_paranoia"
+		default y
+		help
+			Run multiple copies of the standard "FPU paranoia" test, configure
+			for double precision, with tim slicing. This stresses the FPU
+			context switching mechanism.
+
+		config TEST_FPU_paranoia_single
+		bool "FPU_paranoia_single"
+		default y
+		help
+			Run multiple copies of the standard "FPU paranoia" test, configured
+			for single precision, with time slicing. This stresses the FPU
+			context switching mechanism.
+
+	endmenu
+
+	menu "Interprocessor"
+
+		config TEST_interThread
+		bool "Import/export interthreading test"
+		depends on FEATURE_IMPEXP
+		default n if ARCH_LINUX
+		default n if DEBUG_PARANOIA
+		default y
+		help
+			Test the import/export mechanism.
+
+		config TEST_mbxstress
+		bool "Mailbox stress test"
+		depends on FEATURE_IMPEXP
+		default n if ARCH_LINUX
+		default y
+		help
+			Stress the import/export mechanism with mailbox traffic.
+
+		config TEST_mtmath
+		bool "Multiprocessor math test"
+			depends on FEATURE_IMPEXP
+		default n if ARCH_LINUX
+		default y
+		help
+			Test math performance between multiple processors.
+
+		config TEST_MTMATH_N
+		depends on TEST_mtmath
+		int "Number of samples to average"
+		range 0 4096
+		default 128
+		help
+			Specifies the number of samples the multiprocessor math
+			test should take for each statistic.
+
+
+	endmenu
+
+	menu "Metrics"
+
+		config TEST_size
+		bool "size"
+		default y
+		help
+			Generate a table of code/data sizes for the library generated by the
+			current MEOS configuration. Note that in practice, some of this
+			may not be linked to the user application.
+
+		config TEST_usage
+		bool "usage"
+		depends on DEBUG_STACK_CHECKING
+		default y
+		help
+			Measure the minimum stack usage for various MEOS tasks.
+
+		config TEST_timing
+		bool "timing"
+		depends on !SIMULATED_TESTING && !ARCH_LINUX && !(QUICK_DEBUG && QUICK_PROBE)
+		default y
+		help
+			Provide detailed timing data for MEOS operations in the current
+			configuration.
+
+		config TEST_TIMING_N
+		depends on TEST_timing
+		int "Number of samples to average"
+		range 0 4096
+		default 128
+		help
+			Specifies the number of samples the timing test should take for each
+			statistic.
+
+	endmenu
+
+	menu "Supported packages"
+
+		source "$WORK_DIR/support/Kconfig-test"
+
+	endmenu
+
+source "$WORK_DIR/targets/linux/regression/Kconfig"
+source "$WORK_DIR/targets/mips/regression/Kconfig"
+
+endmenu

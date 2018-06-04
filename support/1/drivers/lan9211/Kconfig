@@ -1,0 +1,5 @@
+config DRIVER_LAN9211
+depends on LWIP
+bool "LAN9211"
+help
+	LAN9211 ethernet driver.

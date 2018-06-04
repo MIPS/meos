@@ -1,0 +1,2 @@
+source "$WORK_DIR/support/1/Kconfig-test"
+source "$WORK_DIR/support/3/Kconfig-test"

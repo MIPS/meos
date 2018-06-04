@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="xpsethlite" prefix="XPSETHLITE" modtype="Special">
+  <description>Xilinx XPS Ethernet Lite LWIP driver.</description>
+	<imports>kernel</imports>
+	<imports>lwip</imports>
+	<interface>
+		<include lib="Y">stdio.h</include>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">lwip/netif.h</include>
+		<typedef vis="private"><c>struct XPSETHLITE_tag XPSETHLITE_T</c>(Incomplete) XPS Ethernet Lite system object definition.</typedef>
+		<func name="XPSETHLITE_dtInit">
+			<arg type="XPSETHLITE_T *" name="xpsethlite" traceable="Y">Pointer to XPS Ethernet Lite system object.</arg>
+			<arg type="IRQ_DESC_T *" name="irq">IRQ descriptor for specified XPS Ethernet Lite block.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((xpsethlite != NULL) &amp;&amp; (irq != NULL))</precondition>
+			</limitations>
+			<description>Initialises the XPS Ethernet Lite block described by <code>xpsethlite</code> based on the provided configuration.
+			</description>
+		</func>
+    <epilogue>
+/* complete the XPSETHLITE_T definition... */
+
+struct XPSETHLITE_tag {
+	uintptr_t	pAddr;
+	volatile uint32_t*	regs;
+	uint8_t mac[6];
+        uint32_t phy;
+	KRN_TIMER_T phyTimer;
+        uint32_t pong;
+	struct netif netif;
+};
+		</epilogue>
+	</interface>
+</module>

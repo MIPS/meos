@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="res" prefix="RES" modtype="Functional">
+	<description>Provides structures for defining ELF resource_table sections.</description>
+	<interface>
+		<prologue>
+		</prologue>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t version;<nl/>
+			<tab/>uint32_t numEntries;<nl/>
+			<tab/>uint32_t reserved[2];<nl/>
+			<tab/>uint32_t offset[0];<nl/>
+			} __attribute__((packed)) RES_TABLE_T</c>Resource table header.</typedef>
+		<typedef><c>enum {<nl/>
+			<tab/>RES_TYPE_CARVEOUT = 0,<nl/>
+			<tab/>RES_TYPE_DEVMEM = 1,<nl/>
+			<tab/>RES_TYPE_TRACE = 2,<nl/>
+			<tab/>RES_TYPE_VDEV = 3,<nl/>
+			<tab/>RES_TYPE_IPI = 4,<nl/>
+			<tab/>RES_TYPE_LAST = 5<nl/>
+			} RES_TYPE_T</c>Constants used for declaring resource table entries.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t type;<nl/>
+			<tab/>uint8_t data[0];<nl/>
+			} __attribute__((packed)) RES_ENTRY_T</c>Resource table entry.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t myAddress;<nl/>
+			<tab/>uint32_t phyAddress;<nl/>
+			<tab/>uint32_t length;<nl/>
+			<tab/>uint32_t flags;<nl/>
+			<tab/>uint32_t reserved;<nl/>
+			<tab/>char name[32];<nl/>
+			} __attribute__((packed)) RES_ENTRY_CARVEOUT_T</c>Resource table carve-out entry.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t myAddress;<nl/>
+			<tab/>uint32_t phyAddress;<nl/>
+			<tab/>uint32_t length;<nl/>
+			<tab/>uint32_t flags;<nl/>
+			<tab/>uint32_t reserved;<nl/>
+			<tab/>char name[32];<nl/>
+			} __attribute__((packed)) RES_ENTRY_DEVMEM_T</c>Resource table device memory entry.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t myAddress;<nl/>
+			<tab/>uint32_t length;<nl/>
+			<tab/>uint32_t reserved;<nl/>
+			<tab/>char name[32];<nl/>
+			} __attribute__((packed)) RES_ENTRY_TRACE_T</c>Resource table trace buffer entry.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t myAddress;<nl/>
+			<tab/>uint32_t pageAlign;<nl/>
+			<tab/>uint32_t numBuffers;<nl/>
+			<tab/>uint32_t notifyId;<nl/>
+			<tab/>uint32_t reserved;<nl/>
+			} __attribute__((packed)) RES_ENTRY_RING_T</c>Resource table ring buffer entry.</typedef>
+		<typedef><c>enum {<nl/>
+			<tab/>RES_DEVICE_NET = 1,<nl/>
+			<tab/>RES_DEVICE_BLOCK = 2,<nl/>
+			<tab/>RES_DEVICE_CONSOLE = 3,<nl/>
+			<tab/>RES_DEVICE_RNG = 4,<nl/>
+			<tab/>RES_DEVICE_BALLOON = 5,<nl/>
+			<tab/>RES_DEVICE_RPMSG = 7,<nl/>
+			<tab/>RES_DEVICE_SCSI = 8,<nl/>
+			<tab/>RES_DEVICE_9P = 9,<nl/>
+			<tab/>RES_DEVICE_RPROC_SERIAL = 11,<nl/>
+			<tab/>RES_DEVICE_CAIF = 12<nl/>
+			} RES_DEVICE_T</c>Constants used for declaring resource table device entries.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t type;<nl/>
+			<tab/>uint32_t notifyId;<nl/>
+			<tab/>uint32_t devFeatures;<nl/>
+			<tab/>uint32_t linuxFeatures;<nl/>
+			<tab/>uint32_t configLength;<nl/>
+			<tab/>uint8_t status;<nl/>
+			<tab/>uint8_t numRings;<nl/>
+			<tab/>uint8_t reserved[2];<nl/>
+			<tab/>RES_ENTRY_RING_T rings[0];<nl/>
+			} __attribute__((packed)) RES_ENTRY_DEVICE_T</c>Resource table virtual device entry.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint16_t columns;<nl/>
+			<tab/>uint16_t rows;<nl/>
+			<tab/>uint32_t maximumPorts;<nl/>
+			<tab/>uint32_t emergencyOut;<nl/>
+			} __attribute__((packed)) RES_ENTRY_RPS_CONFIG_T</c>Resource table virtual comms serial port device entry.</typedef>
+		<typedef><c>enum {<nl/>
+			<tab/>RES_RPS_DEV_READY = 0,<nl/>
+			<tab/>RES_RPS_PORT_ADD = 1,<nl/>
+			<tab/>RES_RPS_PORT_REMOVE = 2,<nl/>
+			<tab/>RES_RPS_PORT_READY = 3,<nl/>
+			<tab/>RES_RPS_CONSOLE_PORT = 4,<nl/>
+			<tab/>RES_RPS_RESIZE = 5,<nl/>
+			<tab/>RES_RPS_PORT_OPEN = 6,<nl/>
+			<tab/>RES_RPS_PORT_NAME = 7<nl/>
+			} RES_RPS_COMMAND_T</c>Constants used for controlling virtual comms serial port.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t id;<nl/>
+			<tab/>uint16_t event;<nl/>
+			<tab/>uint16_t value;<nl/>
+			} __attribute__((packed)) RES_ENTRY_RPS_CONTROL_T</c>Virtual comms serial port control message.</typedef>
+		<typedef><c>struct {<nl/>
+			<tab/>uint32_t direction;<nl/>
+			<tab/>uint32_t hwirq;<nl/>
+			} __attribute__((packed)) RES_ENTRY_IPI_T</c>Resource table interrupt entry.</typedef>
+		<typedef><c>enum {<nl/>
+			<tab/>RES_IPI_TO_FW = 0,<nl/>
+			<tab/>RES_IPI_FROM_FW = 1<nl/>
+			} RES_IPI_TYPE_T</c>Constants used for controlling interrupt communication.</typedef>
+		<epilogue>
+		</epilogue>
+	</interface>
+</module>

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="MRF_connection" prefix="MRF_CONNECTION" modtype="Special">
+	<description>MRF24WG driver connection functions</description>
+	<interface>
+    <include lib="Y">stdint.h</include>
+    <prologue>
+		#define MRF_BSSID_LENGTH (6)
+		#define MRF_MAX_SSID_LENGTH (32)
+		#define MRF_MAX_NUM_RATES (8)
+    </prologue>
+    <typedef><c>struct {<nl/>
+		    <tab/>uint8_t version;<nl/>
+		    <tab/>uint8_t patch;<nl/>
+    } MRF_VINFO_T</c>
+    Version information.
+    </typedef>
+
+	<typedef><c>struct {<nl/>
+		<tab/>uint8_t bssid[MRF_BSSID_LENGTH];<nl/>
+		<tab/>uint8_t ssid[MRF_MAX_SSID_LENGTH];<nl/>
+		<tab/>uint8_t apConfig;<nl/>
+		<tab/>uint8_t reserved;<nl/>
+		<tab/>uint16_t beaconPeriod;<nl/>
+		<tab/>uint16_t atimWindow;<nl/>
+		<tab/>uint8_t basicRateSet[MRF_MAX_NUM_RATES];<nl/>
+		<tab/>uint8_t rssi;<nl/>
+		<tab/>uint8_t numRates;<nl/>
+		<tab/>uint8_t DtimPeriod;<nl/>
+		<tab/>uint8_t bssType;<nl/>
+		<tab/>uint8_t channel;<nl/>
+		<tab/>uint8_t ssidLen;<nl/>
+	} MRF_SCAN_RESULT_T</c>
+	Scan result
+    </typedef>
+	<func name="MRF_pctxCreate" vis="private">
+      <return type="int"/>
+      <description>
+      </description>
+    </func>
+    <func name="MRF_ssidSet">
+      <arg type="const uint8_t* const" name="ssid" traceable="Y">Buffer containing the SSID</arg>
+      <arg type="const uint8_t" name="length" traceable="Y">length of the SSID (nulls are valid in SSIDs so a length must be provided)</arg>
+      <return type="int"/>
+      <description>Sets the SSID.
+      </description>
+    </func>
+    <func name="MRF_ssidGet">
+      <arg type="uint8_t* const" name="ssid" traceable="Y">Buffer long enough for the SSID (MAX 32 chars)</arg>
+      <return type="int"/>
+      <description>Gets the SSID.
+      </description>
+    </func>
+    <func name="MRF_bssidSet">
+      <arg type="const uint8_t* const" name="bssid" traceable="Y">Buffer containing the BSSID</arg>
+      <return type="int"/>
+      <description>Sets the BSSID.
+      </description>
+    </func>
+    <func name="MRF_networkTypeSet">
+      <arg type="const uint8_t" name="network_type" traceable="Y">Network type,
+        either MRF_NETWORK_TYPE_INFRASTRUCTURE, MRF_NETWORK_TYPE_ADHOC, or
+        MRF_NETWORK_TYPE_SOFT_AP</arg>
+      <return type="int"/>
+      <description>Sets the network type to infrastructure, ad-hoc or soft AP.
+      </description>
+    </func>
+    <func name="MRF_networkTypeGet">
+      <arg type="uint8_t*" name="network_type" traceable="Y">Network type,
+        either MRF_NETWORK_TYPE_INFRASTRUCTURE, MRF_NETWORK_TYPE_ADHOC, or
+        MRF_NETWORK_TYPE_SOFT_AP</arg>
+      <return type="int"/>
+      <description>Gets the network type the module is set to.
+      </description>
+    </func>
+    <func name="MRF_securityOpenSet">
+      <return type="int"/>
+      <description>Sets the security method to open.
+      </description>
+    </func>
+    <func name="MRF_scanTypeSet">
+      <arg type="const uint8_t" name="type" traceable="Y">Scan type, either
+        MRF_ACTIVE_SCAN or MRF_PASSIVE_SCAN</arg>
+      <return type="int"/>
+      <description>Sets whether the module will scan passively or actively.
+      </description>
+    </func>
+    <func name="MRF_scanCountSet">
+      <arg type="const uint8_t" name="count" traceable="Y">Scan count</arg>
+      <return type="int"/>
+      <description>Sets the scan count.
+      </description>
+    </func>
+    <func name="MRF_scanMinChannelTimeSet">
+      <arg type="const uint16_t" name="tim" traceable="Y">Min scan time</arg>
+      <return type="int"/>
+      <description>Sets the minimum channel scan time.
+      </description>
+    </func>
+    <func name="MRF_scanMaxChannelTimeSet">
+      <arg type="const uint16_t" name="tim" traceable="Y">Max scan time</arg>
+      <return type="int"/>
+      <description>Sets the maximum channel scan time.
+      </description>
+    </func>
+    <func name="MRF_scanProbeDelaySet">
+      <arg type="const uint16_t" name="tim" traceable="Y">The scan probe delay time</arg>
+      <return type="int"/>
+      <description>Sets the scan probe delay time.
+      </description>
+    </func>
+	<func name="MRF_scan">
+	  <return type="int"/>
+	  <description>Starts a scan.
+	  </description>
+	</func>
+	<func name="MRF_scanGetResultsCount">
+	  <return type="uint16_t"/>
+	  <description>Returns the number of scan results available to read, always 0 while a scan is in progress.
+	  </description>
+	</func>
+	<func name="MRF_scanGetResult">
+	  <arg type="MRF_SCAN_RESULT_T* const" name="result" traceable="Y">Buffer in which to place the result</arg>
+	  <arg type="const uint8_t" name="index" traceable="Y">index of the result</arg>
+	  <return type="int"/>
+	  <description>Overwrites result with the scan result at index.
+	  </description>
+	</func>
+    <func name="MRF_rssiSet">
+      <arg type="const uint8_t" name="rssi" traceable="Y">RSSI</arg>
+      <return type="int"/>
+      <description>Sets the RSSI.
+      </description>
+    </func>
+    <func name="MRF_retryCountSet">
+      <arg type="const uint8_t" name="count" traceable="Y">List retry count</arg>
+      <return type="int"/>
+      <description>Sets the list retry count.
+      </description>
+    </func>
+    <func name="MRF_deauthActionSet">
+      <arg type="const uint8_t" name="action" traceable="Y">Deauth Action, either MRF_DO_NOT_ATTEMPT_TO_RECONNECT or MRF_ATTEMPT_TO_RECONNECT.</arg>
+      <return type="int"/>
+      <description>Sets the action to occur on deauth.
+      </description>
+    </func>
+    <func name="MRF_beaconTimeoutSet">
+      <arg type="const uint8_t" name="timeout" traceable="Y">Timeout</arg>
+      <return type="int"/>
+      <description>Sets the beacon timeout.
+      </description>
+    </func>
+    <func name="MRF_beaconTimeoutActionSet">
+      <arg type="const uint8_t" name="action" traceable="Y">Timeout action, either MRF_DO_NOT_ATTEMPT_TO_RECONNECT or MRF_ATTEMPT_TO_RECONNECT.</arg>
+      <return type="int"/>
+      <description>Sets the action to occur on beacon timeout.
+      </description>
+    </func>
+    <func name="MRF_channelListSet">
+      <arg type="const uint8_t* const" name="channels" traceable="Y">Channel list, formed of integers 1-14</arg>
+      <arg type="const uint8_t" name="length" traceable="Y">Channel list length</arg>
+      <return type="int"/>
+      <description>Sets the channel list.
+      </description>
+    </func>
+    <func name="MRF_listenIntervalSet">
+      <arg type="const uint16_t" name="interval" traceable="Y">Listen interval</arg>
+      <return type="int"/>
+      <description>Sets the listen interval.
+      </description>
+    </func>
+    <func name="MRF_dtimIntervalSet">
+      <arg type="const uint16_t" name="interval" traceable="Y">DTIM interval</arg>
+      <return type="int"/>
+      <description>Sets the DTIM interval.
+      </description>
+    </func>
+    <func name="MRF_versionGet">
+      <arg type="MRF_VINFO_T* const" name="info" traceable="Y">Struct to be written over</arg>
+      <return type="int"/>
+      <description>Gets Version and patch numbers.
+      </description>
+    </func>
+    <func name="MRF_domainGet">
+      <arg type="uint8_t* const" name="domain" traceable="Y">Buffer to be wriiten onto</arg>
+      <return type="int"/>
+      <description>Gets the regional domain.
+      </description>
+    </func>
+    <func name="MRF_macGet">
+      <arg type="uint8_t* const" name="mac" traceable="Y">Buffer where the MAC address will be written. Must be > 6 octets long</arg>
+      <return type="int"/>
+      <description>Gets the MAC address.
+      </description>
+    </func>
+    <func name="MRF_connect">
+      <return type="int"/>
+      <description>Connect to the AP (or if in Soft AP mode, bring up the AP).
+      </description>
+    </func>
+    </interface>
+</module>

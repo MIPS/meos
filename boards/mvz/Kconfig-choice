@@ -1,0 +1,4 @@
+config BSP_MVZ
+bool "MVZ guest"
+help
+	Target a MVZ guest VM.

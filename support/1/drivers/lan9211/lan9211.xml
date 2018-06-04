@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="lan9211" prefix="LAN9211" modtype="Special">
+	<description>LAN9211 LWIP driver</description>
+	<imports>kernel</imports>
+	<imports>lwip</imports>
+	<interface>
+		<include lib="Y">stdio.h</include>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">lwip/netif.h</include>
+		<typedef vis="private"><c>struct LAN9211_tag LAN9211_T</c>(Incomplete) LAN9211 system object definition.</typedef>
+		<func name="LAN9211_dtInit">
+			<arg type="LAN9211_T *" name="lan9211" traceable="Y">Pointer to LAN9211 system object.</arg>
+			<arg type="IRQ_DESC_T *" name="irq">IRQ descriptor for specified LAN9211.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((lan9211 != NULL) &amp;&amp; (irq != NULL))</precondition>
+			</limitations>
+			<description>Initialises the LAN9211 described by <code>lan9211</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+/* complete the LAN9211_T definition... */
+struct LAN9211_tag {
+	uintptr_t	pAddr;
+	volatile uint32_t*	regs;
+	uint8_t backupMac[6];
+	struct netif netif;
+};
+		</epilogue>
+	</interface>
+</module>

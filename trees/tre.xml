@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="trees" prefix="TRE" modtype="Functional">
+	<description>Provides general purpose functions for manipulating trees
+	of objects.
+	<par/>
+	The first item at the "top" of a tree is called the <emph>root</emph>
+	item. Items organised in trees may have zero or more <emph>children
+	</emph>. If an item has children, then that group (or family) of
+	children are known as <emph>siblings</emph>. A set of siblings has a
+	common <emph>parent</emph>. Children may have children themselves -
+	i.e., an item may be both a child and a parent.
+	<par/>
+	This module represents a tree as a simple linked list of items. Each
+	item includes pointers to the next sibling and to it's parent. There are
+	also some internal constraints on the location and ordering of the
+	items. While you should not attempt to exploit this information (because
+	it is hidden and not part of the published interface) you may find it
+	helpful to remember that functions to locate the <emph>next</emph> child
+	or sibling will generally be faster than those that locate the
+	<emph>previous</emph> child or sibling.
+	<par/>
+	Many of the functions in this module require arguments to specify both
+	an item and the tree containing it. This is done for performance and
+	memory footprint optimisation. In particular, MEOS allows tree-able
+	items to be managed in <emph>pools</emph>. This module has been
+	implemented so as not to cause unnecessary enlargement of other
+	pool-able data types.
+	<par/>
+	All objects to be included in trees must have the <code>TRE_LINK</code>
+	macro call as the <emph>first</emph> field in the <code>struct</code>.
+	<par/>
+	All tree (<code>TRE_T</code>) objects <emph>must</emph> be initialised
+	before use.
+	<par/></description>
+	<imports>debug</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/debug/dbg.h</include>
+		<define><c>TRE_LINK TRE_LINKAGE_T tre_link</c>
+		Macro for declaring linkage fields in tree-able  objects.
+		<par/>
+		For example to declare a tree-able object:
+		<par/>
+		<code>struct {<nl/>
+				<tab/>TRE_LINK;<nl/>
+				<tab/>...<nl/>} object;</code>
+		</define>
+		<typedef vis="private"><c>struct TRE_linkage_tag TRE_LINKAGE_T
+		</c>Private data type used by <code>TRE_LINK</code> macro.
+		</typedef>
+		<typedef vis="anonymous"><c>struct TRE_tag TRE_T</c>
+		Tree type.
+		</typedef>
+		<typedef vis="anonymous"><c>struct TRE_copy_tag TRE_COPY_T</c>
+		Data type for sub-tree-copy context store.
+		</typedef>
+		<func name="TRE_addChild">
+			<arg type="void *" name="item" traceable="y">Pointer to tree-able
+			item.</arg>
+			<arg type="void *" name="parent" traceable="y">Pointer to item to add
+			it to.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((item != NULL) &amp;&amp; (parent != NULL))</precondition>
+            </limitations>
+			<description>Add <code>item</code> as child of other item or as root
+			item of tree.
+			<par/>
+			The <code>item</code> is inserted as final sibling if
+			there are many.</description>
+		</func>
+		<func name="TRE_addSibling">
+			<arg type="void *" name="item" traceable="y">Pointer to tree-able
+			item.</arg>
+			<arg type="void *" name="sibling" traceable="y">Pointer to item
+			already in the tree.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((item != NULL) &amp;&amp; (sibling != NULL))</precondition>
+            </limitations>
+			<description>Add <code>item</code> to the tree with the
+			same parent as <code>sibling</code>.
+			<par/>
+			This is generally faster than <code>TRE_addChild</code>.
+			<par/>
+			The <code>item</code> is added as the final sibling
+			belonging to the common parent.</description>
+		</func>
+		<func name="TRE_areSiblings" quals="inline static" vis="virtual">
+			<arg type="void *" name="item1" traceable="y">Pointer to first item.
+			</arg>
+			<arg type="void *" name="item2" traceable="y">Pointer to second item.
+			</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Items are siblings.</item>
+					<item val="0 (FALSE)">Items are not siblings.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>((item1 != NULL) &amp;&amp; (item2 != NULL))</precondition>
+            </limitations>
+			<description>Tests whether two items are siblings.
+			</description>
+		</func>
+		<func name="TRE_copyNextInSubTree">
+			<arg type="TRE_COPY_T *" name="copy" traceable="y">Pointer to scratch
+			item for storing copy state.</arg>
+			<arg type="void *" name="looseItem" traceable="y">Pointer to unlinked
+			tree-able item to add into tree.</arg>
+			<return type="void *">Pointer to the next source item
+			which will be copied.</return>
+			<limitations>
+            <precondition>((copy != NULL) &amp;&amp; (looseItem != NULL))</precondition>
+            </limitations>
+			<description>This function is part of a pair with
+			<code>TRE_initCopySubTree()</code> for copying a
+			sub-tree. The caller is expected to first call
+			<code>TRE_initCopySubTree()</code> to initialise the
+			copy context, and then repeatedly call this function to
+			copy each item in turn.
+			<par/>
+			This approach leaves the user in control of the memory
+			management associated with allocating objects to receive
+			the copies of each item.
+			<par/>
+			Note that this function only copies the tree linkage
+			pointers, i.e. it only copies the tree <emph>structure
+			</emph>. It is up to the caller to copy each item's data
+			content.</description>
+		</func>
+		<func name="TRE_finalSibling">
+			<arg type="void *" name="item" traceable="y">Pointer to tree-able
+			item.</arg>
+			<return type="void *">Final sibling in family.</return>
+			<limitations>
+            <precondition>(item != NULL)</precondition>
+            <postcondition>(_RESULT != NULL)</postcondition>
+            </limitations>
+			<description>Returns a pointer to final sibling of an
+			<code>item</code> or to <code>item</code> itself if it
+			has no siblings.</description>
+		</func>
+		<func name="TRE_firstChild">
+			<arg type="void *" name="item" traceable="y">Pointer to tree-able
+			item.</arg>
+			<return type="void *"><code>NULL</code> if no children,
+			else first child item.</return>
+			<limitations>
+            <precondition>(item != NULL)</precondition>
+            </limitations>
+			<description>Returns pointer to first child of an
+			<code>item</code>.</description>
+		</func>
+		<func name="TRE_initCopySubTree">
+			<arg type="void *" name="subTree" traceable="y">Pointer to root item
+			of sub-tree or to tree; to be copied.</arg>
+			<arg type="TRE_T *" name="tree" traceable="y">Pointer to tree
+			containing source <code>subTree</code>.</arg>
+			<arg type="void *" name="destParent" traceable="y">Pointer to item in
+			the destination <code>tree</code>, where the copied
+			<code>subTree</code> will be appended to as a child.
+			</arg>
+			<arg type="TRE_T *" name="destTree" traceable="y">Pointer destination
+			tree (which contains <code>destParent</code>).</arg>
+			<arg type="TRE_COPY_T *" name="copy" traceable="y">Pointer object for
+			storing copy "context".</arg>
+			<return type="void *" traceable="y">Pointer to the first source item
+			to be copied.</return>
+			<limitations>
+            <precondition>((subTree != NULL) &amp;&amp; (tree != NULL) &amp;&amp; (destParent != NULL) &amp;&amp; (destTree != NULL) &amp;&amp; (copy != NULL))</precondition>
+            </limitations>
+			<description>This function is part of a pair with <code>
+			TRE_copyNextInSubTree()</code>. It is used to initialise
+			the <code>TRE_COPY_T</code> context object which is then
+			used to iterate through the source sub-tree, using
+			<code>TRE_copyNextInSubTree()</code>.</description>
+		</func>
+		<func name="TRE_initTree">
+			<arg type="TRE_T *" name="tree" traceable="y">Pointer to tree.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(tree != NULL)</precondition>
+            </limitations>
+			<description>Initialises a tree object.</description>
+		</func>
+		<func name="TRE_isInSubTree">
+			<arg type="void *" name="subTree" traceable="y">Pointer to root item
+			of sub-tree or to tree.</arg>
+			<arg type="void *" name="item" traceable="y">Pointer to tree-able
+			item.</arg>
+			<arg type="TRE_T *" name="tree" traceable="y">Pointer to tree
+			containing <code>item</code>.</arg>
+			<return type="void *">
+				<enum>
+					<item val="Non-zero">Pointer to root item
+			of sub-tree or to tree.</item>
+					<item val="NULL">Item is not in sub-tree.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>((subTree != NULL) &amp;&amp; (item != NULL) &amp;&amp; (tree != NULL))</precondition>
+            </limitations>
+			<description>Test for membership of a given sub-tree.
+			</description>
+		</func>
+		<func name="TRE_nextSibling">
+			<arg type="void *" name="item" traceable="y">Pointer to tree-able
+			item.</arg>
+			<return type="void *"><code>NULL</code> if no further
+			siblings, else address of sibling.</return>
+			<limitations>
+            <precondition>(item != NULL)</precondition>
+            </limitations>
+			<description>Returns pointer to next sibling of an
+			<code>item</code>.</description>
+		</func>
+		<func name="TRE_parent" quals="inline static" vis="virtual">
+			<arg type="void *" name="item" traceable="y">Pointer to item.</arg>
+			<limitations>
+            <precondition>(item != NULL)</precondition>
+            </limitations>
+			<return type="void *">Pointer to <code>item</code>'s
+			parent.</return>
+			<description>Returns a pointer to an <code>item</code>'s
+			parent.</description>
+		</func>
+		<func name="TRE_prevSibling">
+			<arg type="void *" name="item" traceable="y">Pointer to an item.</arg>
+			<return type="void *"><code>NULL</code> if no previous
+			siblings, else address of sibling.</return>
+			<limitations>
+            <precondition>(item != NULL)</precondition>
+            </limitations>
+			<description>Returns pointer to previous sibling of an
+			<code>item</code>.
+			<par/>
+			Note that this is considerably slower than
+			<code>TRE_nextSibling()</code>.</description>
+		</func>
+		<func name="TRE_removeLeaf">
+			<arg type="void *" name="item" traceable="y">Pointer to an item.</arg>
+			<arg type="TRE_T *" name="tree" traceable="y">Pointer to tree
+			containing item.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((item != NULL) &amp;&amp; (tree != NULL))</precondition>
+            </limitations>
+			<description>Remove leaf <code>item</code> from its
+			tree.</description>
+		</func>
+		<func name="TRE_removeLeafFromSubTree">
+			<arg type="void *" name="subTree" traceable="y">Pointer to sub-tree.
+			</arg>
+			<arg type="TRE_T *" name="tree" traceable="y">Pointer to tree
+			containing <code>item</code>.</arg>
+			<return type="void *">Returns the item just removed from
+			<code>subTree</code>, or <code>NULL</code> if the
+			<code>subTree</code> is now empty.</return>
+			<limitations>
+            <precondition>((subTree != NULL) &amp;&amp; (tree != NULL))</precondition>
+            </limitations>
+			<description>Remove a leaf item from a sub-tree.
+			</description>
+		</func>
+		<func name="TRE_removeSubTree">
+			<arg type="void *" name="item" traceable="y">Pointer to item.</arg>
+			<arg type="TRE_T *" name="tree" traceable="y">Pointer to tree
+			containing <code>item</code>.</arg>
+			<return type="void *">Returns the final member of the
+			sub-tree removed.</return>
+			<limitations>
+            <precondition>((item != NULL) &amp;&amp; (tree != NULL))</precondition>
+            <postcondition>(_RESULT != NULL)</postcondition>
+            </limitations>
+			<description>Remove the sub-tree rooted at
+			<code>item</code> from the <code>tree</code>.
+			</description>
+		</func>
+		<func name="TRE_root" quals="inline static" vis="virtual">
+			<arg type="TRE_T *" name="tree" traceable="y"/>
+			<return type="void *">Pointer to root item.</return>
+			<limitations>
+            <precondition>(tree != NULL)</precondition>
+            </limitations>
+			<description>Locates the root item in the specified
+			<code>tree</code>.
+			<par/>
+			Returns <code>NULL</code> if the <code>tree</code> is
+			empty.</description>
+		</func>
+		<func name="TRE_subTreeNext">
+			<arg type="void *" name="subTree" traceable="y">Pointer to sub-tree
+			root.</arg>
+			<arg type="void *" name="item" traceable="y">Pointer to an item in the
+			sub-tree.</arg>
+			<arg type="TRE_T *" name="tree" traceable="y">Pointer to tree.</arg>
+			<return type="void *"><code>NULL</code> if no further
+			items in <code>subTree</code>, otherwise next item.
+			</return>
+			<limitations>
+            <precondition>((subTree != NULL) &amp;&amp; (item != NULL) &amp;&amp; (tree != NULL))</precondition>
+            </limitations>
+			<description>Given an <code>item</code> in the sub-tree
+			rooted an <code>subTree</code>, which is part of
+			<code>tree</code>, return the next item in <code>subTree
+			</code>.
+			<par/>
+			This function is used to iterate over sub-trees.
+			</description>
+		</func>
+		<epilogue>
+
+/* complete the anonymous type definitions */
+
+struct TRE_linkage_tag{
+	PARAHEAD
+	void *next;
+	void *parent;
+	PARATAIL
+};
+
+struct TRE_tag {
+	PARAHEAD
+	void *root;
+	void *tip;
+	PARATAIL
+};
+
+struct TRE_copy_tag {
+	PARAHEAD
+	void *sourceRoot;
+	void *destRoot;
+	void *subRoot;
+	void *destCurrent;
+	void *sourceCurrent;
+	void *sourcePrev;
+	void *sourceTree;
+	PARATAIL
+};
+
+#ifndef MEOS_NO_FUNCS
+
+/* Some trivial functions are implemented as "inline static" for efficiency */
+inline static void *TRE_root(TRE_T *tree)
+{
+	return tree-&gt;root;
+}
+inline static int TRE_areSiblings(void *t1, void *t2)
+{
+	return ((((TRE_LINKAGE_T *)t1)-&gt;parent ==
+		((TRE_LINKAGE_T *)t2)-&gt;parent ) ? 1 : 0);
+}
+inline static void *TRE_parent(void *item)
+{
+	return (((TRE_LINKAGE_T *)item)-&gt;parent);
+}
+
+#endif
+
+		</epilogue>
+	</interface>
+</module>

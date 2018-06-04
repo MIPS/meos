@@ -1,0 +1,2269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="kernel" prefix="KRN" modtype="System">
+	<description>A simple multi-tasking kernel. The kernel supports
+	prioritised tasks with pre-emptive scheduling.</description>
+	<imports>debug</imports>
+	<imports>dqueues</imports>
+	<imports>irq</imports>
+	<imports>lists</imports>
+	<imports>timer</imports>
+	<imports>trees</imports>
+	<interface>
+		<prologue>
+		</prologue>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/debug/dbg.h</include>
+		<include lib="N">meos/lists/lst.h</include>
+		<include lib="N">meos/dqueues/dq.h</include>
+		<include lib="N">meos/trees/tre.h</include>
+		<include lib="N">meos/irq/irq.h</include>
+		<include lib="N">meos/tmr/tmr.h</include>
+		<define><c>KRN_INFWAIT (-1)</c>Infinite wait value for time-outs.
+		</define>
+		<define vis="private"><c>KRN_INHERIT (-2)</c>Inherit existing time-out. Internal use only.</define>
+		<define><c>KRN_NOWAIT (0)</c>No wait value for time-outs.</define>
+		<define><c>KRN_LOWEST_PRIORITY (0)</c>Minimum task priority.
+		</define>
+		<define><c>KRN_MAX_PRIORITY_LEVELS (CONFIG_FEATURE_MAX_PRIORITIES)</c>Maximum permitted
+		number of priority levels.</define>
+		<define><c>KRN_MSG_SIZE (offsetof(KRN_MSG_T, p64b) + sizeof(((KRN_MSG_T*)NULL)->p64b) - offsetof(KRN_MSG_T, from))</c>
+		The size of the payload of a <code>KRN_MSG_T</code>. Does not include overheads such as paranoia data.</define>
+		<define><c>KRN_NOWAIT (0)</c>No wait value for time-outs.</define>
+		<define><c>KRN_NUMHWTHREADS (CONFIG_FEATURE_MAX_PROCESSORS)</c>The maximum number of processors MEOS can see.</define>
+		<define><c>KRN_POOLLINK KRN_POOLLINK_T KRN_plink</c>Linkage
+		field directive for pool-able items.</define>
+		<typedef><c>enum {<nl/>
+			<tab/>KRN_BARRIER_FLAG_READ=1,<nl/>
+			<tab/>KRN_BARRIER_FLAG_WRITE=2,<nl/>
+			<tab/>KRN_BARRIER_FLAG_COMPLETE=4<nl/>
+		} KRN_BARRIER_FLAG_T</c>Control options for <code>KRN_barrier.</code>
+		</typedef>
+		<typedef><c>enum {<nl/>
+			<tab/>KRN_OS_MEOS=0,<nl/>
+			<tab/>KRN_OS_LINUX=1<nl/>
+		} KRN_OS_T</c>Operating system identifiers.
+		</typedef>
+		<typedef vis="private"><c>enum {<nl/>
+			<tab/>KRN_DEAD,<nl/>
+			<tab/>KRN_OTHER,<nl/>
+			<tab/>KRN_RELEASE,<nl/>
+			<tab/>KRN_TIMESLICE<nl/>
+		} KRN_REASON_T</c>Reasons for task switch.
+		</typedef>
+		<typedef vis="private"><c>enum {<nl/>
+			<tab/>KRN_RUNNING = 0,<nl/>
+			<tab/>KRN_TIMEDOUT,<nl/>
+			<tab/>KRN_ZERO<nl/>
+		} KRN_TIMEOUT_T</c>Time-out tracking.
+		</typedef>
+		<typedef vis="private"><c>enum {<nl/>
+			<tab/>KRN_OBJ_SEM,<nl/>
+			<tab/>KRN_OBJ_LOCK,<nl/>
+			<tab/>KRN_OBJ_MBX,<nl/>
+			<tab/>KRN_OBJ_EFC,<nl/>
+			<tab/>KRN_OBJ_POOL,<nl/>
+			<tab/>KRN_OBJ_SYNC,<nl/>
+			<tab/>KRN_OBJ_WQ,<nl/>
+		} KRN_OBJID_T</c>Constants to identify synchronisation objects
+		for import/export system.</typedef>
+		<typedef vis="private"><c>enum {<nl/>
+			<tab/>KRN_RESPONSE_ACK = 0,<nl/>
+			<tab/>KRN_RESPONSE_NACK = 1,<nl/>
+			<tab/>KRN_RESPONSE_NOTIFY = 2,<nl/>
+			<tab/>KRN_COMMAND_SEMAPHORE_TEST = 3,<nl/>
+			<tab/>KRN_COMMAND_SEMAPHORE_SET = 4,<nl/>
+			<tab/>KRN_COMMAND_LOCK = 5,<nl/>
+			<tab/>KRN_COMMAND_UNLOCK = 6,<nl/>
+			<tab/>KRN_COMMAND_FLAGCLUSTER_TEST = 7,<nl/>
+			<tab/>KRN_COMMAND_FLAGCLUSTER_SET = 8,<nl/>
+			<tab/>KRN_COMMAND_FLAGCLUSTER_TOGGLE = 9,<nl/>
+			<tab/>KRN_COMMAND_FLAGCLUSTER_CLEAR = 10,<nl/>
+			<tab/>KRN_COMMAND_MAILBOX_GET = 11,<nl/>
+			<tab/>KRN_COMMAND_MAILBOX_PUT = 12,<nl/>
+			<tab/>KRN_COMMAND_POOL_TAKE = 13,<nl/>
+			<tab/>KRN_COMMAND_POOL_RETURN = 14,<nl/>
+			<tab/>KRN_COMMAND_SYNC = 15,<nl/>
+			<tab/>KRN_COMMAND_WQ_QUEUE = 16,<nl/>
+			<tab/>KRN_COMMAND_MEM_ANNOUNCE = 17,<nl/>
+			<tab/>KRN_COMMAND_IMPORT_PROBE = 18,<nl/>
+		} KRN_CMD_T</c>Constants to identify responses/command for import/export system.</typedef>
+		<typedef vis="private"><c>enum {<nl/>
+			<tab/>KRN_SUBCOMMAND_OK = 0,<nl/>
+			<tab/>KRN_SUBCOMMAND_FAIL = 1,<nl/>
+			<tab/>KRN_SUBCOMMAND_WAIT = 2,<nl/>
+			<tab/>KRN_SUBCOMMAND_FLAGCLUSTER_ANY = 4,<nl/>
+			<tab/>KRN_SUBCOMMAND_FLAGCLUSTER_CLEAR = 8,<nl/>
+		} KRN_SUBCMD_T</c>Constants to identify subcommands for import/export system.</typedef>
+		<typedef><c>struct {<nl/>
+			<parahead/>
+			<tab/>uint8_t objtype;<nl/>
+			<tab/>uint8_t sId;<nl/>
+			<tab/>int8_t thread;<nl/>
+			<tab/>int8_t unused;<nl/>
+			<paratail/>
+		}  KRN_IMPEXP_T</c>Import/Export control item - first field in
+		semaphore. Used for managing import/export.</typedef>
+		<typedef><c>DQ_T KRN_TASKQ_T</c>Task queue type. Task queues
+		must be initialised with <code>DQ_init</code> before use.
+		</typedef>
+		<typedef><c>int32_t KRN_PRIORITY_T</c>Task priority type. Task
+		priorities run from <code>KRN_LOWEST_PRIORITY</code> (0) up to
+		the value provided to <code>KRN_reset</code>.</typedef>
+		<typedef vis="anonymous"><c>IRQ_IPL_T KRN_IPL_T</c>IPL (interrupt
+		priority) type. For backwards compatibility, do not use.</typedef>
+		<typedef><c>enum {<nl/>
+			<tab/>KRN_ANY=1,<nl/>
+			<tab/>KRN_ALL=2<nl/>
+		} KRN_FLAGOP_T</c>Control options for <code>KRN_testFlags.</code>
+		</typedef>
+		<typedef>
+		<c>enum {<nl/>
+			<tab/>KRN_FLUSH_FLAG_I=1,<nl/>
+			<tab/>KRN_FLUSH_FLAG_D=2,<nl/>
+			<tab/>KRN_FLUSH_FLAG_WRITEBACK_D=4<nl/>
+		} KRN_FLUSH_FLAG_T</c>Control options for <code>KRN_flushCache
+		</code>.</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			<parahead/>
+			#ifdef CONFIG_FEATURE_IMPEXP<nl/>
+			<tab/>KRN_IMPEXP_T impexp;<nl/>
+			#endif<nl/>
+			<tab/>uint32_t value;<nl/>
+			<tab/>KRN_TASKQ_T waitq;<nl/>
+			<paratail/>
+		} KRN_SEMAPHORE_T</c>Semaphore type.</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			<parahead/>
+			#ifdef CONFIG_FEATURE_IMPEXP<nl/>
+			<tab/>KRN_IMPEXP_T impexp;<nl/>
+			#endif<nl/>
+			<tab/>uint32_t reset;<nl/>
+			<tab/>uint32_t count;<nl/>
+			<tab/>KRN_TASKQ_T waitq;<nl/>
+			<paratail/>
+		} KRN_SYNC_T</c>Sync type.</typedef>
+		<typedef>
+		<c>enum {<nl/>
+			<tab/>KRN_PRELOAD_FLAG_DATA=1,<nl/>
+			<tab/>KRN_PRELOAD_FLAG_INST=2,<nl/>
+			<tab/>KRN_PRELOAD_FLAG_READ=4,<nl/>
+			<tab/>KRN_PRELOAD_FLAG_WRITE=8,<nl/>
+			<tab/>KRN_PRELOAD_FLAG_NORMAL=16,<nl/>
+			<tab/>KRN_PRELOAD_FLAG_STREAMED=32,<nl/>
+			<tab/>KRN_PRELOAD_FLAG_RETAINED=64<nl/>
+		} KRN_PRELOAD_FLAG_T</c>Control options for <code>
+		KRN_preloadCache</code>.</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			<parahead/>
+			#ifdef CONFIG_FEATURE_IMPEXP<nl/>
+			<tab/>KRN_IMPEXP_T impexp;<nl/>
+			#endif<nl/>
+			<tab/>uint32_t flags;<nl/>
+			<tab/>KRN_TASKQ_T waitq;<nl/>
+			<paratail/>
+		} KRN_FLAGCLUSTER_T</c>Event flag cluster type.</typedef>
+		<typedef vis="anonymous"><c>KRN_SEMAPHORE_T  KRN_LOCK_T</c>Locks
+		are just semaphores with particular usage conventions.</typedef>
+		<typedef><c>void KRN_TASKFUNC_T(void)</c> Task function.
+		</typedef>
+		<typedef><c>void KRN_ISRFUNC_T(int sigNum)</c>Installable  ISR
+		function.</typedef>
+		<typedef vis="anonymous"><c>struct KRN_task_tag KRN_TASK_T</c>
+		Task context data type.</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			<tab/>KRN_SEMAPHORE_T sem;<nl/>
+			<parahead/>
+			<tab/>LST_T items;<nl/>
+			<paratail/>
+		} KRN_MAILBOX_T</c>Mailbox type.</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+			<tab/>KRN_SEMAPHORE_T sem;<nl/>
+			<parahead/>
+			<tab/>LST_T freeList;<nl/>
+			<paratail/>
+		} KRN_POOL_T</c>Pool type.</typedef>
+		<typedef vis="anonymous">
+		<c>struct{<nl/>
+			<tab/>union {<nl/>
+				<tab/><tab/>LST_LINK;<nl/>
+				<tab/><tab/>DQ_LINK;<nl/>
+				<tab/><tab/>TRE_LINK;<nl/>
+			<tab/>} poolLinkages;<nl/>
+			<parahead/>
+			<tab/>KRN_POOL_T *owner;<nl/>
+			#ifdef CONFIG_FEATURE_IMPEXP<nl/>
+			<tab/>KRN_IMPEXP_T expinfo;<nl/>
+			#endif<nl/>
+			<paratail/>
+		} KRN_POOLLINK_T</c>Pool linkage type.</typedef>
+		<typedef vis="anonymous"><c>struct KRN_timer_tag KRN_TIMER_T</c>
+		Timer descriptor.</typedef>
+		<typedef><c>void KRN_TIMERFUNC_T(<nl/>
+			<tab/>KRN_TIMER_T *timer,<nl/>
+			<tab/>void *timerPar<nl/>
+		)</c>Timer function</typedef>
+		<typedef vis="anonymous"><c>struct KRN_schedule_tag
+			KRN_SCHEDULE_T</c>Static scheduler data.</typedef>
+		<typedef>
+		<c>struct {<nl/>
+			<parahead/>
+			<tab/>void *objPtr;<nl/>
+			<tab/>uint32_t owner;<nl/>
+			<paratail/>
+		} KRN_IMPORT_T</c>Import definition.
+		</typedef>
+		<typedef>
+		<c>struct {<nl/>
+			<parahead/>
+			<tab/>void *objPtr;<nl/>
+			<tab/>int notifyMask;<nl/>
+			<paratail/>
+		} KRN_EXPORT_T</c>Export definition.
+		</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+			<parahead/>
+			<tab/>uint8_t from;<nl/>
+			<tab/>uint8_t to;<nl/>
+			<tab/>uint32_t seq;<nl/>
+			<tab/>KRN_CMD_T cmd;<nl/>
+			<tab/>KRN_SUBCMD_T subCmd;<nl/>
+			<tab/>uint32_t cID;<nl/>
+			<tab/>uint32_t sID;<nl/>
+			<tab/>uint64_t p64a;<nl/>
+			<tab/>uint64_t p64b;<nl/>
+			<paratail/>
+		} KRN_MSG_T</c>Interprocessor message. Used for implementing import/export.</typedef>
+		<typedef vis="public"><c>struct KRN_trace_tag {<nl/>
+			<tab/>uintptr_t event;<nl/>
+			<tab/>union {<nl/>
+			<tab/><tab/>struct {<nl/>
+			<tab/><tab/><tab/>uintptr_t absTime;<nl/>
+			<tab/><tab/><tab/>uintptr_t p1;<nl/>
+			<tab/><tab/><tab/>uintptr_t p2;<nl/>
+			<tab/><tab/>} initial;
+			<tab/><tab/>struct {<nl/>
+			<tab/><tab/><tab/>uintptr_t p1;<nl/>
+			<tab/><tab/><tab/>uintptr_t p2;<nl/>
+			<tab/><tab/><tab/>uintptr_t p3;<nl/>
+			<tab/><tab/>} supplemental;
+			<tab/><tab/>char text[sizeof(uintptr_t)*3];
+			<tab/>};<nl/>
+		} KRN_TRACE_T</c>Kernel debug trace item.</typedef>
+		<typedef vis="private"><c>struct {<nl/>
+			<tab/>DQ_LINK;<nl/>
+			<tab/>KRN_TASK_T *owner;<nl/>
+		<tab/>} KRN_DEBUGLINK_T</c>Task control block item used by
+		Codescape for task level debug.</typedef>
+		<typedef vis="private"><c>struct KRN_job_tag KRN_JOB_T</c>Job control block.</typedef>
+		<typedef vis="anonymous"><c>struct KRN_stats_tag KRN_STATS_T</c>
+		Type definition for statistics record.</typedef>
+		<typedef vis="private"><c>struct KRN_wq_tag KRN_WQ_T</c>Work queue.</typedef>
+		<var type="KRN_TRACE_T *" decl="KRN_traceMin">Points to the
+		lowest addressed element in the (circular) kernel trace buffer.
+		</var>
+		<var type="KRN_TRACE_T *" decl="KRN_traceMax">Points to the
+		lowest addressed element in the (circular) trace buffer.</var>
+		<var type="volatile KRN_TRACE_T *" decl="KRN_tracePtr">Points to the most
+		recent entry in the (circular) kernel trace buffer.</var>
+		<var type="size_t" decl="KRN_traceSize">Contains the number of
+		elements in the trace buffer.</var>
+		<func name="KRN_barrier" vis="virtual">
+			<arg type="KRN_BARRIER_FLAG_T" name="flags">Control flags.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(flags &amp; ~(KRN_BARRIER_FLAG_READ | KRN_BARRIER_FLAG_WRITE)) == 0</precondition>
+			</limitations>
+			<description>Perform a processor level memory barrier. Some
+			platforms only support full barriers, in which case the flags will
+			be ignored. Otherwise, if <code>KRN_BARRIER_FLAG_READ</code> is set,
+			a read memory barrier will be performed, and if
+			<code>KRN_BARRIER_FLAG_WRITE</code> is set, a write memory barrier
+			will be performed. <code>KRN_BARRIER_FLAG_COMPLETE</code> requires
+			that instructions before the barrier must be fully issued before
+			execution will resume.</description>
+		</func>
+		<func name="KRN_cancelTimer">
+			<arg type="KRN_TIMER_T *" name="timer" traceable="Y">Pointer to timer
+			object.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero">Timer cancelled.
+					</item>
+					<item val="0">Timer already expired
+					or cancelled.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(timer != NULL)</precondition>
+            </limitations>
+			<description>Cancels an active <code>timer</code>. After
+			cancellation the <code>timer</code> timer object
+			may be re-used.
+			<par/>
+			You must take care when cancelling timers. The return
+			status is only trustworthy as long as the timer object
+			has not been re-used following timer expiry.
+			<par/>
+			If you are not careful, you could end up cancelling a
+			later timer than the one you intended.
+			<par/>
+			Furthermore, you should never cancel a timer object
+			which has been used for some purpose other than timer
+			management, or which has not been used as a timer. The
+			cancellation attempt would almost certainly disrupt your
+			software.
+			</description>
+		</func>
+		<func name="KRN_clearFlags">
+			<arg type="KRN_FLAGCLUSTER_T *" name="cluster" traceable="Y">Pointer
+			to event flag cluster object.</arg>
+			<arg type="uint32_t" name="mask">Flag clearing mask.
+			</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(cluster != NULL)</precondition>
+            </limitations>
+			<description>Clear the  flags indicated by
+			<code>mask</code> in the specified event flag
+			<code>cluster</code>.
+			<par/>
+			Clearing flags never causes other tasks to be
+			re-activated.
+			<par/>
+			Calls to this function may be made in ISRs provided that
+			<code>cluster</code> is not imported or exported.
+			</description>
+		</func>
+	    	<func name="KRN_dispatchWQ">
+			<arg type="KRN_WQ_T *" name="wq" traceable="Y">Work queue to dispatch.</arg>
+			<arg type="int32_t" name="n">Number of jobs to dispatch.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(wq != NULL)</precondition>
+			</limitations>
+			<description>Dispatch <code>n</code> jobs from <code>wq</code>. If <code>n</code> is negative, <code>KRN_dispatchWQ</code> will not return, and will infinitely dispatch jobs.</description>
+		</func>
+		<func name="KRN_emptyPool">
+			<arg type="KRN_POOL_T *" name="pool" traceable="Y">Pointer to pool
+			object.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Pool was empty.
+					</item>
+					<item val="0 (FALSE)">Pool was not empty.
+					</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(pool != NULL)</precondition>
+            </limitations>
+			<description>Tests whether a <code>pool</code> is empty.
+			<par/>
+			Take care with this function. In a pre-emptive system,
+			the state of the pool may change between the instant
+			when it was tested and the function return value being
+			used (or even provided). This function is probably only
+			useful if you have some additional knowledge about the
+			circumstances in which items are allocated from or
+			returned to the pool.
+			<par/>
+			Calls to this function may be made in ISRs provided that
+			<code>pool</code> is not imported or exported.
+			</description>
+		</func>
+		<func name="KRN_export">
+			<arg type="uint8_t" name="exportId">Export Id for
+			the object.</arg>
+			<arg type="void *" name="object"  traceable="Y">Pointer to exported
+			object.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="1">Success.</item>
+					<item val="0">Failure.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(object != NULL)</precondition>
+            <postcondition>((_RESULT &gt;= 0) &amp;&amp; (_RESULT &lt;= 1))</postcondition>
+            </limitations>
+			<description>Exports an <code>object</code> and
+			associates it with an <code>exportId</code> value.
+			The <code>exportId</code> must be greater than 0.
+			<par/>
+			Various conditions can cause this function to fail,
+			including forgetting to install the Import/Export system
+			with <code>KRN_installImpExp</code>, and using an
+			out-of-range <code>exportId</code>. The exported
+			<code>object</code> may be a semaphore, a resource lock,
+			an event flag cluster or a pool. It must be initialised,
+			but not otherwise used prior to export.
+			<par/>
+			The function attempts to verify that the object is
+			indeed one of the allowed types and reports an error if
+			it is not. However, this verification can, in some
+			circumstances be fooled, so don't rely on it.
+			</description>
+		</func>
+		<func name="KRN_flushCache" vis="virtual">
+			<arg type="void *" name="address">Address of memory
+				region to flush.</arg>
+			<arg type="size_t" name="size">Size (in bytes) of region
+				to flush.</arg>
+			<arg type="uint32_t" name="flags">How to flush region.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((flags &amp; ~(KRN_FLUSH_FLAG_I | KRN_FLUSH_FLAG_D | KRN_FLUSH_FLAG_WRITEBACK_D)) == 0)</precondition>
+			</limitations>
+			<description>Performs a cache flush operation on the
+			selected memory region.
+			<par/>
+			The <code>flags</code> argument selects which caches are
+			to be flushed, and how. <code>KRN_FLUSH_FLAG_I</code>
+			specifies that the instruction cache should be flushed,
+			whereas <code>KRN_FLUSH_FLAG_D</code> specifies the data
+			cache should be flushed.
+			<code>KRN_FLUSH_FLAG_WRITEBACK_D</code> specifies that
+			the data cache should be written back to memory prior to
+			flushing.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="KRN_getMbox">
+			<arg type="KRN_MAILBOX_T *" name="mbox" traceable="Y">Pointer to
+				mailbox.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="void *">
+				<enum>
+					<item val="non-NULL">Item retrieved.
+					</item>
+					<item val="NULL">No item available.
+					</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(mbox != NULL)</precondition>
+            </limitations>
+			<description>Retrieves the next item from the mailbox
+			indicated by <code>mbox</code>.
+			<par/>
+			If <code>timeout</code> is negative, then the function
+			will always retrieve an item. If necessary, the caller
+			will block until an item is available. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. A <code>NULL</code> return
+			indicates that no item was retrieved before the timeout
+			expired. In the special case of a zero
+			<code>timeout</code> value, the function will return
+			immediately without blocking: the return value will be
+			<code>NULL</code> unless an item is immediately
+			available.
+			<par/>Non-blocking calls (i.e., with zero
+			<code>timeout</code>) to this function may be made in
+			ISRs provided that <code>mbox</code> is not imported or
+			exported.
+			</description>
+		</func>
+		<func name="KRN_hibernate" vis="virtual">
+			<arg type="KRN_TASKQ_T *" name="queue" traceable="Y">Pointer to queue
+				for hibernating task.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(queue != NULL)</precondition>
+            </limitations>
+			<description>The calling task hibernates on the
+			specified <code>queue</code>. When the function
+			eventually returns, it will either be because some other
+			task has woken the caller (for example by calling
+			<code>KRN_wake</code>) or because the timeout expired.
+			<par/>
+			If <code>timeout</code> is negative,  then the caller
+			will always block until another task wakes it. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. In the special case of a
+			zero <code>timeout</code> value, the function will
+			return immediately without hibernating: this is of
+			little value.
+			<par/>
+			Task queues must be treated as "belonging" to the
+			caller's processor. It is not permissible to mix
+			tasks from different processors on the same task
+			queue.</description>
+		</func>
+		<func name="KRN_hibernateWithValue">
+			<arg type="KRN_TASKQ_T *" name="queue" traceable="Y">Pointer to queue
+				for hibernating task.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="uint32_t"><enum>
+					<item val="Non-zero">Wake up value.</item>
+					<item val="0">Timeout expired.</item>
+				</enum></return>
+			<limitations>
+            <precondition>(queue != NULL)</precondition>
+            </limitations>
+			<description>The calling task hibernates on the
+			specified <code>queue</code>. When the function
+			eventually returns, it will either be because some other
+			task has woken the caller (for example by calling
+			<code>KRN_wake</code>) or because the timeout expired.
+			<par/>
+			If <code>timeout</code> is negative,  then the caller
+			will always block until another task wakes it. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. In the special case of a
+			zero <code>timeout</code> value, the function will
+			return immediately without hibernating: this is of
+			little value.
+			<par/>
+			Task queues must be treated as "belonging" to the
+			caller's processor. It is not permissible to mix
+			tasks from different processors on the same task
+			queue.</description>
+		</func>
+		<func name="KRN_import">
+			<arg type="int32_t" name="thread">Server thread's number.
+			</arg>
+			<arg type="uint8_t" name="exportId">Server
+				thread's export Id for the object.</arg>
+			<arg type="void *" name="object" traceable="Y">Pointer to local
+				object.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="1">Success.</item>
+					<item val="0">Failure.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(object != NULL)</precondition>
+            <postcondition>((_RESULT &gt;= 0) &amp;&amp; (_RESULT &lt;= 1))</postcondition>
+            </limitations>
+			<description>Imports a server's export and associates it
+			with a local <code>object</code>.
+			<par/>
+			Various conditions can cause this function to fail
+			including forgetting to reset the Import/Export system
+			with <code>KRN_installImpExp</code> and using a
+			duplicate or out-of-range <code>exportId/thread</code>
+			combination. The local <code>object</code> may be a
+			semaphore, a resource lock, an event flag cluster or a
+			pool. It must be initialised, but not otherwise used
+			prior to import.
+			<par/>
+			The function attempts to verify that the object is
+			indeed one of the allowed types and reports an error if
+			it is not. However, this verification can, in some
+			circumstances be fooled, so don't rely on it.
+			<par/>
+			This function does check with the server that the
+			object specified by <code>exportId</code> is exported,
+			but does not check it is of the	correct type. However,
+			if there is not a proper match, subsequent
+			communications between client and server will fail in
+			unpredictable ways.
+			<par/>
+			The proper correspondence between thread imports and
+			exports is a static aspect of a system's design which
+			should be carefully documented.</description>
+		</func>
+		<func name="KRN_initFlags">
+			<arg type="KRN_FLAGCLUSTER_T *" name="cluster" traceable="Y">Pointer
+			to event flag cluster object.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(cluster != NULL)</precondition>
+            </limitations>
+			<description>Initialise the event flag cluster specified
+			by <code>cluster</code>. Event flag clusters must be
+			initialised once only before use. Following
+			initialisation, all flags in the cluster are
+			<code>clear</code>.
+			</description>
+		</func>
+		<func name="KRN_initLock">
+			<arg type="KRN_LOCK_T *" name="lock" traceable="Y">Pointer to resource
+			lock object.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(lock != NULL)</precondition>
+            </limitations>
+			<description>Initialises a resource <code>lock</code>
+			for use.</description>
+		</func>
+		<func name="KRN_initMbox">
+			<arg type="KRN_MAILBOX_T *" name="mbox" traceable="Y">Pointer to
+				mailbox.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(mbox != NULL)</precondition>
+            </limitations>
+			<description>Initialises a mailbox. Mailboxes must be
+			initialised before they are first used.</description>
+		</func>
+		<func name="KRN_initPool">
+			<arg type="KRN_POOL_T *" name="pool" traceable="Y">Pointer to pool
+				object.</arg>
+			<arg type="void *" name="items">Pointer to item buffer.
+			</arg>
+			<arg type="int32_t" name="numItems">Number of items.</arg>
+			<arg type="int32_t" name="itemSize">Size of each item.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((pool != NULL) &amp;&amp; (items != NULL) &amp;&amp; (numItems != 0) &amp;&amp; (itemSize != 0))</precondition>
+            </limitations>
+			<description>Initialises a pool. Pools must be
+			initialised before they are first used.
+			<par/>
+	         	A pool manages a set of identical items. These items may
+	         	be allocated from the pool and then returned for re-use.
+	         	This function creates a pool by binding the
+	         	<code>pool</code> object to the <code>items</code>
+	         	array. The <code>items</code> array contains
+	         	<code>numItems</code> pool-able objects, each of size
+	         	<code>itemSize</code>.
+			<par/>
+			To be "pool-able", an object must be a
+			<code>struct</code> with a <code>KRN_POOLLINK;</code>
+			directive as its first field.
+			<par/>
+			Take care when specifying <code>itemSize</code>.
+			Strictly speaking, this is the address difference (in
+			bytes) between successive elements of the
+			<code>items</code> array. If the compiler inserts
+			padding bytes for alignment, you may need to calculate
+			<code>itemSize</code> by taking the address difference
+			between two elements, rather than simply using
+			<code>sizeof</code>.</description>
+		</func>
+		<func name="KRN_initSemaphore">
+			<arg type="KRN_SEMAPHORE_T *" name="semaphore" traceable="Y">Pointer
+			to semaphore object.</arg>
+			<arg type="uint32_t" name="value">Initial value.
+			</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(semaphore != NULL)</precondition>
+            </limitations>
+			<description>Initialise a <code>semaphore</code> with
+			the specified initial <code>value</code>.</description>
+		</func>
+		<func name="KRN_initSync">
+			<arg type="KRN_SYNC_T *" name="sync" traceable="Y">Pointer to sync object.</arg>
+			<arg type="uint32_t" name="value">Number of threads to sync.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(sync != NULL)</precondition>
+            </limitations>
+			<description>Initialise the synchronisation barrier <code>sync</code>
+			for <code>value</code> threads.</description>
+		</func>
+		<func name="KRN_initWQ">
+			<arg type="KRN_WQ_T *" name="wq" traceable="Y">Pointer to work queue descriptor.</arg>
+			<arg type="KRN_TASK_T *" name="tasks">Pointer to the first element of an array of tasks.</arg>
+			<arg type="uint32_t *" name="stacks">Pointer to an array of stacks for <code>tasks</code>.</arg>
+			<arg type="uint32_t" name="nTasks">The number of tasks in the array <code>tasks</code>.</arg>
+			<arg type="size_t" name="stackSize">The size of each stack in <code>stacks</code>.</arg>
+			<arg type="KRN_PRIORITY_T" name="prio">The priority each task in <code>tasks</code> should be spawned at.</arg>
+			<arg type="KRN_JOB_T *" name="jobs">Pointer to the first element of an array of jobs.</arg>
+			<arg type="uint32_t" name="nJobs">The number of jobs in the array <code>jobs</code>.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((wq != NULL) &amp;&amp; (((tasks == NULL) &amp;&amp; (stacks == NULL) &amp;&amp; (nTasks == 0) &amp;&amp; (stackSize == 0) &amp;&amp; (prio == 0) &amp;&amp; (jobs == NULL) &amp;&amp; (nJobs == 0)) || ((jobs != NULL) &amp;&amp; (nJobs > 0))))</precondition>
+			</limitations>
+			<description>Creates a work queue. If tasks are specified, they will be started, and will dispatch any jobs queued with <code>KRN_queueWQ</code>. If all parameters and sizes are zero, the work queue is only usable for importing a work queue from another processor.</description>
+		</func>
+		<func name="KRN_installImpExp">
+			<arg type="uint8_t"
+				name="maxImpIds [KRN_NUMHWTHREADS]">Maximum Id
+				value to be imported from each processor.
+			</arg>
+			<arg type="uint8_t" name="maxExpId">Maximum Id
+				value to be exported from this thread.</arg>
+			<arg type="KRN_IMPORT_T *" name="impTable">Pointer to
+				import table.</arg>
+			<arg type="KRN_EXPORT_T *" name="expTable">Pointer to
+				export table.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((maxImpIds != NULL) &amp;&amp; !((impTable == NULL) &amp;&amp; (expTable == NULL)))</precondition>
+            </limitations>
+			<description>Installs extra code and data tables for the
+			kernel's import/export system. If you use the
+			import/export system (see <code>KRN_import</code> and
+			<code>KRN_export</code>), you must call this function
+			once only immediately following <code>KRN_reset</code>.
+			<par/>
+			The <code>impTable</code> argument points to an array of
+			import descriptors. The number of elements in this array
+			should be at least the sum of the values in
+			<code>maxImpIds</code>, excluding any value for the
+			active thread, which is ignored. If your program does
+			not import any items, then you may provide
+			<code>NULL</code> for the <code>impTable</code>
+			argument.
+			<par/>
+			The <code>maxImpIds</code> array parameter specifies the
+			maximum  export ID to be imported by your program from
+			each of	the other threads. The maximum permitted value
+			for <code>maxImpIds</code> is 255. If your program does
+			not import any  items from a particular thread, then set
+			the <code>maxImpIds</code> value to zero. (The
+			<code>maxImpIds</code> value for the current thread will
+			be ignored.
+			<par/>
+			The <code>expTable</code> argument points to an array of
+			export descriptors containing at least
+			<code>maxExpId</code> elements.
+			<par/>
+			The <code>maxExpId</code> should be at least the maximum
+			ID exported  from the current thread. The maximum
+			permitted value for <code>maxExpId</code> is 255. If the
+			thread does not export any items, then set
+			<code>maxExpId = 0</code> and
+			<code>expTable = NULL</code>.</description>
+		</func>
+		<func name="KRN_installPerfStats">
+			<arg type="KRN_STATS_T *" name="statsBuf">Pointer to
+				array of performance statistics records.</arg>
+			<arg type="int32_t" name="bufSize">Number of entries in
+				statistics buffer.</arg>installPerf
+			<return type="void"/>
+			<limitations>
+            <precondition>((statsBuf != NULL) &amp;&amp; (bufSize != 0))</precondition>
+            </limitations>
+			<description>Installs a buffer for use by the MEOS
+			Profiling system.
+			<par/>
+			This system allows an external agency (such as a test
+			harness) to collect performance statistics on a
+			task-by-task basis. However, before such a tool will
+			work, you must provide a buffer to collect the
+			statistics, using this function.
+			<par/>
+			If required, you must call this function after
+			<code>KRN_reset</code> but before
+			<code>KRN_startOS</code>.
+			<par/>
+			Data collection will be activated automatically when you
+			call <code>KRN_startTimerTask</code>, although it will
+			be common for performance analysis tools to stop and
+			restart the data collection themselves.
+			<par/>
+			Collecting performance statistics adds some overhead to
+			the scheduler and interrupt handlers, so you should not
+			normally install a performance statistics buffer in
+			production builds.
+			<par/>
+			The size of the buffer (indicated by
+			<code>bufSize</code>) must be at least 4 plus the
+			maximum number of tasks in your system, including the timer task. If
+			the buffer is too small, your system will fail.
+			<par/>
+    		Profiling introduces additional overheads so this
+    		feature is conditionally compiled, and may be disabled in the MEOS
+    		configuration.</description>
+		</func>
+		<func name="KRN_lock">
+			<arg type="KRN_LOCK_T *" name="lock" traceable="Y">Pointer to resource
+			lock object.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Lock granted.
+					</item>
+					<item val="0 (FALSE)">Lock not granted.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(lock != NULL)</precondition>
+            </limitations>
+			<description>Request a lock.
+			<par/>
+			If <code>timeout</code> is negative, then the function
+			will always succeed. If necessary, the caller will block
+			until the lock can be granted. If <code>timeout</code>
+			is positive, then the caller will block for a maximum of
+			<code>timeout</code> scheduler clock ticks before
+			returning. A <code>zero</code> return indicates that the
+			lock could not be granted before the timeout expired. In
+			the special case of a zero <code>timeout</code> value,
+			the function will return immediately without blocking:
+			the return value will be <code>zero</code> unless the
+			lock can be granted immediately.
+			<par/>
+			Non-blocking calls (i.e., with zero
+			<code>timeout</code>) to this function may be made in
+			ISRs provided that <code>lock</code> is not imported or
+			exported.</description>
+		</func>
+		<func name="KRN_maxPriority">
+			<voidargs/>
+			<return type="KRN_PRIORITY_T">Maximum task priority.
+			</return>
+			<description>Returns the system's maximum task priority.
+			This is just the <code>maxPriority</code> value provided
+			to <code>KRN_reset</code>.
+			<par/>
+			The timer task runs at <code>maxPriority</code>. All
+			other tasks in the system run at priority values in the
+			range <code>0...(maxPriority-1)</code>.</description>
+		</func>
+		<func name="KRN_me">
+			<voidargs/>
+			<return type="KRN_TASK_T *">Pointer to current task.
+			</return>
+			<limitations>
+            <postcondition>(_RESULT != NULL)</postcondition>
+            </limitations>
+			<description>Returns a pointer to the currently
+			executing task's control object. This allows a task to
+			identify itself.</description>
+		</func>
+		<func name="KRN_preloadCache" vis="virtual">
+			<arg type="void *" name="address">Address of memory
+			region to preload.</arg>
+			<arg type="size_t" name="size">Size (in bytes) of region
+			to preload.</arg>
+			<arg type="int32_t" name="flags">How to preload region.
+			</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((flags &amp; ~(KRN_PRELOAD_FLAG_DATA | KRN_PRELOAD_FLAG_INST | KRN_PRELOAD_FLAG_READ | KRN_PRELOAD_FLAG_WRITE | KRN_PRELOAD_FLAG_NORMAL | KRN_PRELOAD_FLAG_STREAMED | KRN_PRELOAD_FLAG_RETAINED)) == 0)</precondition>
+            </limitations>
+			<description>Performs a cache preload operation on the
+			selected memory region.
+			<par/>
+			<code>KRN_PRELOAD_FLAG_DATA</code> indicates the specified memory
+			should be preloaded into the data cache, whereas
+			<code>KRN_PRELOAD_FLAG_INST</code> indicates it should be loaded
+			into the instruction cache.
+			<par/>
+			The remaining flags are only relevant to data cache preloads.
+			<code>KRN_PRELOAD_FLAG_READ</code> and
+			<code>KRN_PRELOAD_FLAG_WRITE</code> indicate the
+			preloaded data will be used principally for read or
+			write respectively. <code>KRN_PRELOAD_FLAG_NORMAL</code>
+			indicates the data is expected to be used in a normal
+			fashion, whereas <code>KRN_PRELOAD_FLAG_STREAMED</code>
+			indicates the data will be finished with quickly, and
+			<code>KRN_PRELOAD_FLAG_RETAINED</code> indicates the
+			data is expected to be used long term.
+			<par/>It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="KRN_priority">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">Pointer to task
+			object (or <code>NULL</code>).</arg>
+			<arg type="KRN_PRIORITY_T" name="priority">New priority
+			value.</arg>
+			<return type="KRN_PRIORITY_T">Previous priority (or
+			<code>-1</code> to indicate error).</return>
+			<description>Assigns a new priority to the specified
+			<code>task</code>. <par/>
+			If <code>task</code> is <code>NULL</code>, then the
+			caller's own priority is adjusted.
+			<par/>
+			You may not alter the timer task's priority (this must
+			always be the single highest priority task in the
+			system). If <code>task</code> points to the timer task,
+			the function does nothing except return the error code
+			<code>-1</code>
+			<par/>
+			If you attempt to set a priority below
+			<code>KRN_LOWEST_PRIORITY</code>, the function will
+			simply set the target task priority to
+			<code>KRN_LOWEST_PRIORITY</code>. If you attempt to set
+			too high a priority, the function will set the target
+			task to <code>(maximum - 1)</code>, where
+			<code>maximum</code> is the <code>maxPriority</code>
+			argument provided to <code>KRN_reset</code>.
+			The maximum priority level is reserved exclusively for
+			the timer task.</description>
+		</func>
+		<func name="KRN_proc" vis="virtual">
+			<voidargs/>
+			<return type="uint32_t"/>
+			<limitations>
+				<precondition>(_KRN_schedule != NULL)</precondition>
+			</limitations>
+			<description>Return the index of the current processor.
+			<par/>
+			Calls to this function may be made in an ISR.
+			</description>
+		</func>
+		<func name="KRN_procs" vis="virtual">
+			<voidargs/>
+			<return type="uint32_t"/>
+			<limitations>
+				<precondition>(_KRN_schedule != NULL)</precondition>
+			</limitations>
+			<description>Return the number of processors visible to MEOS.
+			<par/>
+			Calls to this function may be made in an ISR.
+			</description>
+		</func>
+		<func name="KRN_putMbox">
+			<arg type="KRN_MAILBOX_T *" name="mbox"  traceable="Y">Pointer to
+			mailbox.</arg>
+			<arg type="void *" name="item" traceable="Y">Item to add to mailbox.
+			</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((mbox != NULL) &amp;&amp; (item != NULL))</precondition>
+            </limitations>
+			<description>Adds an <code>item</code> to the mailbox
+			indicated by <code>mbox</code>.
+			<par/>
+			All tasks (if any) blocking on the mailbox (in
+			<code>KRN_getMbox</code>) will be re-activated. Tasks
+			blocking on mailboxes are re-activated in the same order
+			that they blocked. Due to the nature of the scheduler, the earliest
+			highest priority task will run, and the remainder will reblock.
+			<par/>
+			To be successfully added to a mailbox, the
+			<code>item</code> must be "list-able". It must be a
+			<code>struct</code> with either a <code>LST_LINK;</code>
+			or a <code>KRN_POOLLINK;</code> directive in the first
+			field position. Failure to observe this requirement will
+			result in unpredictable run-time behaviour.
+			<par/>
+			It is safe to call this function in ISRs.</description>
+		</func>
+	    	<func name="KRN_queueWQ">
+			<arg type="KRN_WQ_T *" name="wq" traceable="Y">Work queue to enqueue upon.</arg>
+			<arg type="KRN_TASKFUNC_T" name="fn">Function to enqueue.</arg>
+			<arg type="void *" name="par">Task parameter for duration of function execution.</arg>
+			<arg type="const char *" name="name">Task name for duration of function execution.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks) to enqueue job.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Job queued.
+					</item>
+					<item val="0 (FALSE)">Job not queued.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>((wq != NULL) &amp;&amp; (fn != NULL))</precondition>
+			</limitations>
+			<description>Enqueues a job on work queue <code>wq</code>.
+			<par/>
+			If <code>timeout</code> is negative, then the function
+			will always succeed. If necessary, the caller will block
+			until the job can be queued. If <code>timeout</code>
+			is positive, then the caller will block for a maximum of
+			<code>timeout</code> scheduler clock ticks before
+			returning. A <code>zero</code> return indicates that the
+			job could not be queued before the timeout expired. In
+			the special case of a zero <code>timeout</code> value,
+			the function will return immediately without blocking:
+			the return value will be <code>zero</code> unless the
+			job can be queued immediately.
+			<par/>
+			If <code>wq</code> is imported, the job name will be lost
+			due to protocol limitations.</description>
+		</func>
+		<func name="KRN_raiseIPL" vis="virtual">
+			<voidargs/>
+			<return type="IRQ_IPL_T">Previous IPL.</return>
+			<description>Synonym for <code>IRQ_raiseIPL</code>. Do not use.
+			</description>
+		</func>
+		<func name="KRN_refreshCache" vis="virtual">
+			<arg type="void *" name="address">Address of memory
+			region to refresh.</arg>
+			<arg type="int32_t" name="size">Size (in bytes) of region to
+			refresh.</arg>
+			<return type="void"/>
+			<description>Performs a data cache refresh operation on the
+			selected memory region. Any data in the region within the cache
+			will be flushed, and then reloaded.<par/>
+			<par/>It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="KRN_release">
+			<voidargs/>
+			<return type="void"/>
+			<description>The calling task voluntarily releases
+			control, causing a rescheduling event.
+			</description>
+		</func>
+		<func name="KRN_removeTask">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">Pointer to task
+			(or <code>NULL</code>).</arg>
+			<return type="void"/>
+			<description>Stops the specified task. If the
+			<code>task</code> argument is null, the calling task
+			stops itself.
+			<par/>
+			Take great care, when stopping tasks, to ensure that the
+			task is not holding any resource locks or other
+			resources, and that it does not have outstanding QIO or
+			timer requests. In the interests of simplicity and
+			efficiency, the kernel does not attempt to "tidy up"
+			such matters when tasks are stopped. Such protection is
+			up to the system designer. We accept this limitation
+			because we expect that the vast majority of systems
+			built using the kernel will have a static task
+			configuration.</description>
+		</func>
+		<func name="KRN_removeWQ">
+			<arg type="KRN_WQ_T *" name="wq" traceable="Y">Work queue to remove.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>(wq != NULL)</precondition>
+			</limitations>
+			<description>Shuts down a work queue, removing any associated tasks.</description>
+		</func>
+		<func name="KRN_reset">
+			<arg type="KRN_SCHEDULE_T *" name="sched">Pointer to
+			schedule object.</arg>
+			<arg type="KRN_TASKQ_T *" name="schedQueues">Pointer to
+			an array of task queues.</arg>
+			<arg type="uint32_t" name="maxPriority">Maximum
+			priority.</arg>
+			<arg type="uint32_t" name="stackInit">Stack
+			initialisation value.</arg>
+			<arg type="uint32_t *" name="intStack">Pointer to
+			interrupt stack.</arg>
+			<arg type="size_t" name="issize">Size (in 32 bit words)
+			of interrupt stack.</arg>
+			<arg type="KRN_TRACE_T *" name="traceBuf">Pointer to
+			kernel trace buffer array (or <code>NULL</code>).</arg>
+			<arg type="int32_t" name="traceBufSize">Number of items in
+			trace buffer.</arg>
+			<limitations>
+			<precondition>(((traceBuf == NULL) &amp;&amp; (traceBufSize == 0)) || ((traceBuf != NULL) &amp;&amp; (traceBufSize != 0)))</precondition>
+			<postcondition>((_RESULT &gt;= 0) &amp;&amp; (_RESULT &lt;= 1))</postcondition>
+			</limitations>
+			<return type="int32_t">
+				<enum>
+					<item val="1">Success.</item>
+					<item val="0">Failure - bad value for
+						<code>maxPriority</code>.</item>
+				</enum>
+			</return>
+			<description>Resets the kernel module. This function
+			must be called once only, before any other kernel
+			function is used.
+			<par/>
+			The <code>sched</code> argument points to a data object
+			which is used by the scheduler for its private state
+			data. Do not access it directly, except to pass its address to
+			this function.
+			<par/>
+			The <code>maxPriority</code> argument determines the
+			number of scheduling priority levels. Available task
+			priorities (for <code>KRN_startTask</code> and
+			<code>KRN_priority</code> will run from zero to
+			<code>(maxPriority - 1)</code>. The maximum priority
+			level <code>maxPriority</code> is reserved for the timer
+			task. The number of priority levels selected should be
+			the minimum required for the application. More priority
+			levels give greater scheduling flexibility but at the
+			cost of slightly increased scheduling overhead. The
+			value chosen for <code>maxPriority</code> must satisfy
+			<code>(maxPriority &gt; 0)</code> and <code>(maxPriority
+			&lt; CONFIG_FEATURE_MAX_PRIORITIES)</code>.
+			<par/>
+			The <code>schedQueues</code> argument points to an array
+			of <code>KRN_TASKQ_T</code> objects. This array
+			<emph>must</emph> contain <code>(maxPriority + 1)</code>
+			elements.
+			<par/>
+			If <code>stackInit</code> is non-zero, stacks will be
+			filled with this value prior to	task startup. This can
+			be used by <code>KRN_stackInfo</code> to report on stack
+			usage. Since there is a run-time penalty in initialising
+			task stacks, this argument should normally be zero for
+			production builds.
+			<par/>
+			<code>intStack</code> points to a buffer of memory used
+			as the stack during interrupt calls. It will be
+			initialised with the value <code>stackInit</code> if
+			set.
+			<par/>
+			The <code>traceBuf</code> argument points to an array of
+			kernel trace entries. The kernel treats this as	a
+			circular buffer. The number of entries in
+			<code>traceBuf</code> is given by
+			<code>traceBufSize</code>. If kernel tracing is not
+			required, it can be disabled by setting
+			<code>traceBuf</code> to <code>NULL</code> and
+			<code>traceBufSize</code> to zero.
+			<par/>
+			Kernel tracing introduces additional overheads so it is
+			conditionally compiled and may not be available depending on
+			MEOS configuration. Please see `Software and hardware tracing`_.
+			</description>
+		</func>
+		<func name="KRN_resetExport">
+			<arg type="uint8_t" name="exportId">Export Id for
+			the object.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="1">Success.</item>
+					<item val="0">Failure.</item>
+				</enum>
+			</return>
+			<limitations>
+			<postcondition>((_RESULT &gt;= 0) &amp;&amp; (_RESULT &lt;= 1))</postcondition>
+			</limitations>
+			<description>Disassociates an <code>exportId</code> from
+			a local object, allowing it to be reused.
+			<par/>
+        		Various conditions can cause this function to fail
+        		including forgetting to reset the Import/Export system
+        		with <code>KRN_installImpExp</code>, and using an
+        		out-of-range or unused <code>exportId/thread</code>
+        		combination. Attempts to use the associated object may
+        		fail in unpredictable ways. Use should be discontinued
+        		or the object reinitialised.
+        		<par/>
+        		It is recommended that thread imports and exports are a
+        		static aspect of a system's design, and use of this
+        		function is discouraged. A review of the system's design
+        		is strongly recommended to eliminate the need for this
+        		function.</description>
+		</func>
+		<func name="KRN_resetImport">
+			<arg type="uint8_t" name="threadId">Server
+				thread's number.</arg>
+			<arg type="uint8_t" name="exportId">Server
+				thread's export Id for the object.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="1">Success.</item>
+					<item val="0">Failure.</item>
+				</enum>
+			</return>
+			<limitations>
+			<postcondition>((_RESULT &gt;= 0) &amp;&amp; (_RESULT &lt;= 1))</postcondition>
+			</limitations>
+			<description>Disassociates a server's export from a
+			local object, allowing it to be reused.
+			<par/>
+        		Various conditions can cause this function to fail
+        		including forgetting to reset the Import/Export system
+        		with <code>KRN_installImpExp</code>, and using an
+        		out-of-range or unused <code>exportId/thread</code>
+        		combination. Attempts to use the associated local object
+        		may fail in unpredictable ways. Use should be
+        		discontinued or the object reinitialised.
+        		<par/>
+        		It is recommended that thread imports and exports are a
+        		static aspect of a system's design, and use of this
+        		function is discouraged. A review of the system's design
+        		is strongly recommended to eliminate the need for this
+        		function.</description>
+		</func>
+		<func name="KRN_restoreIPL" quals="" vis="virtual">
+			<arg type="IRQ_IPL_T" name="newIPL">New IPL value.</arg>
+			<return type="void"/>
+			<description>Synonym for <code>IRQ_restoreIPL</code>. Do not use.
+			</description>
+		</func>
+		<func name="KRN_returnPool">
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(item != NULL)</precondition>
+			</limitations>
+			<description>Returns an <code>item</code> to its pool.
+			The item must have previously been allocated from a
+			pool.
+			<par/>
+			Items "know" to which pool they belong, so it is not
+			necessary to provide a "pool" argument. It is not
+			necessary to track ownership of items, which makes it
+			easy to design systems in which allocated items	are
+			passed from thread to thread before being released for
+			re-use.
+			<par/>
+			Calls to this function may be made in ISRs provided that
+			<code>pool</code> is not imported or exported.
+			</description>
+		</func>
+		<func name="KRN_setFlags">
+			<arg type="KRN_FLAGCLUSTER_T *" name="cluster" traceable="Y">Pointer
+			to event flag cluster object.</arg>
+			<arg type="uint32_t" name="mask">Flag setting mask.
+			</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(cluster != NULL)</precondition>
+			</limitations>
+			<description>Set the flags indicated by
+			<code>mask</code> in the specified event flag
+			<code>cluster</code>.
+			<par/>
+			Tasks with blocked <code>KRN_testFlags</code> calls may
+			be re-activated as a result.
+			<par/>
+			Calls to this function may be made in ISRs provided that
+			<code>cluster</code> is not imported or exported.
+			</description>
+		</func>
+		<func name="KRN_setSemaphore">
+			<arg type="KRN_SEMAPHORE_T *" name="semaphore" traceable="Y">Pointer
+			to semaphore object.</arg>
+			<arg type="uint32_t" name="increment">Semaphore
+			increment value.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(semaphore != NULL)</precondition>
+			</limitations>
+			<description>Increment the <code>semaphore</code> by the
+			specified <code>value</code>. Tasks with blocked
+			<code>KRN_testSemaphore</code> calls may be re-activated
+			as a result.
+			<par/>
+			Calls to this function may be made in ISRs provided that
+			<code>semaphore</code> is not imported or exported.
+			</description>
+		</func>
+		<func name="KRN_setSoftTimer">
+			<arg type="KRN_TIMER_T *" name="timer" traceable="Y">Pointer to timer
+			object.</arg>
+			<arg type="KRN_TIMERFUNC_T *" name="timerFunction">
+			Pointer to timer function.</arg>
+			<arg type="void *" name="timerPar">Parameter for timer
+			function.</arg>
+			<arg type="int32_t" name="delay">Delay time.</arg>
+			<arg type="int32_t" name="tolerance">Tolerable extra delay.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((timer != NULL) &amp;&amp; (timerFunction != NULL))</precondition>
+			</limitations>
+			<description> Starts a timer, but coalesces it into another timer
+			if there's one within <code>tolerance</code> scheduler clock ticks.
+			This will help reduce context switches and wake ups.
+			After approximately <code>delay</code> scheduler clock ticks, the
+			<code>timerFunction</code>
+			will be executed in the context of the timer processing
+			task. The timer processing task executes at the maximum
+			priority and executes timer functions sequentially as
+			they expire, so timer functions should be short and
+			non-blocking.
+			<par/>
+			You may use the pointer to the timer object as a handle
+			to cancel the timer (using
+			<code>KRN_cancelTimer</code>).
+			<par/>
+			The <code>timerPar</code> parameter will be passed to
+			<code>timerFunc</code> along with the <code>timer</code>
+			object handle.
+			<par/>
+			Although the internal structure of the
+			<code>timer</code> object is undefined, you may assume
+			that it has the properties of a <emph>pool-able</emph>
+			object: a timer object may be managed in single or
+			double linked lists, taken from and returned to a pool
+			and delivered via a mailbox. However, the timer system
+			itself uses the <code>timer</code> object's linkage
+			fields, so it must not be contained in any other kind of
+			list when <code>KRN_setTimer</code> is called. A common
+			arrangement is to allocate the <code>timer</code>
+			object from a pool and then have the
+			<code>timerFunc</code> return it.
+			<par/>
+			The <code>delay</code> argument is interpreted as
+			follows:
+				<enum>
+					<item val="&gt;0">Delay time (in
+					scheduler clock ticks)</item>
+					<item val="=0">Timer will expire
+					immediately</item>
+					<item val="&lt;0">Infinite expiry time
+					- function does nothing.</item>
+				</enum>
+			</description>
+		</func>
+		<func name="KRN_setTimer" vis="virtual">
+			<arg type="KRN_TIMER_T *" name="timer" traceable="Y">Pointer to timer
+			object.</arg>
+			<arg type="KRN_TIMERFUNC_T *" name="timerFunction">
+			Pointer to timer function.</arg>
+			<arg type="void *" name="timerPar">Parameter for timer
+			function.</arg>
+			<arg type="int32_t" name="delay">Delay time.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((timer != NULL) &amp;&amp; (timerFunction != NULL))</precondition>
+			</limitations>
+			<description> Starts a timer. After <code>delay</code>
+			scheduler clock ticks, the <code>timerFunction</code>
+			will be executed in the context of the timer processing
+			task. The timer processing task executes at the maximum
+			priority and executes timer functions sequentially as
+			they expire, so timer functions should be short and
+			non-blocking.
+			<par/>
+			You may use the pointer to the timer object as a handle
+			to cancel the timer (using
+			<code>KRN_cancelTimer</code>).
+			<par/>
+			The <code>timerPar</code> parameter will be passed to
+			<code>timerFunc</code> along with the <code>timer</code>
+			object handle.
+			<par/>
+			Although the internal structure of the
+			<code>timer</code> object is undefined, you may assume
+			that it has the properties of a <emph>pool-able</emph>
+			object: a timer object may be managed in single or
+			double linked lists, taken from and returned to a pool
+			and delivered via a mailbox. However, the timer system
+			itself uses the <code>timer</code> object's linkage
+			fields, so it must not be contained in any other kind of
+			list when <code>KRN_setTimer</code> is called. A common
+			arrangement is to allocate the <code>timer</code>
+			object from a pool and then have the
+			<code>timerFunc</code> return it.
+			<par/>
+			The <code>delay</code> argument is interpreted as
+			follows:
+				<enum>
+					<item val="&gt;0">Delay time (in
+					scheduler clock ticks)</item>
+					<item val="=0">Timer will expire
+					immediately</item>
+					<item val="&lt;0">Infinite expiry time
+					- function does nothing.</item>
+				</enum>
+			</description>
+		</func>
+		<func name="KRN_setTimeSlice">
+			<arg type="int32_t" name="ticks">Time slicing period.</arg>
+			<return type="int32_t">Previous time slice value.</return>
+			<description>Sets (or disables) the scheduler's time
+			slicing period.	Time slicing is initially disabled.
+			<par/>
+			The scheduler has a very simple approach to time
+			slicing. The time slice period is the maximum period for
+			which a task will run without a scheduler event
+			occurring. Slice timing is restarted on
+			<emph>every</emph> scheduler event so, in an active
+			system, there may in fact be no time slice initiated
+			scheduler events.
+			<par/>
+			The <code>ticks</code> argument is interpreted as
+			follows:
+				<enum>
+					<item val="&gt;0">New time slice value
+					(in scheduler clock ticks)</item>
+					<item val="0">No change (just return
+					current value)</item>
+					<item val="&lt;0">Disable time slicing
+					</item>
+				</enum>
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="KRN_stackInfo">
+			<arg type="KRN_TASK_T *" name="task"  traceable="Y">Pointer to task or
+			<code>NULL</code>.</arg>
+			<arg type="int32_t *" name="total">Receives initial stack
+			size.</arg>
+			<arg type="int32_t *" name="free">Receives free stack space.
+			</arg>
+			<arg type="int32_t *" name="used">Receives used stack space.
+			</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Stack information
+					valid.</item>
+					<item val="0 (FALSE)">Stack information not
+					available.</item>
+				</enum>
+			</return>
+			<limitations>
+			<precondition>((total != NULL) &amp;&amp; (free != NULL) &amp;&amp; (used != NULL))</precondition>
+			</limitations>
+			<description>Provides information about the specified
+			<code>task</code>'s stack size and use.	If
+			<code>task</code> is <code>NULL</code> then information
+			about the current task is provided. All values are in
+			numbers of <code>uint32_t</code> elements. Values
+			are at best approximate	since the unused stack is
+			identified simply by looking for fixed initialisation
+			values.
+			<par/>
+			This function may be unable to provide information about
+			the use of the system stack, depending on whether the
+			implementation can provide data on its location and
+			limits. If this is the case, information will not be
+			available about the startup task (created by
+			<code>KRN_startOS</code>).
+			<par/>
+			Since stack initialisation incurs a run-time penalty,
+			this function is normally disabled. To report task stack
+			information, the function must be explicitly enabled at
+			startup by providing a suitable value as the
+			<code>stackInit</code> argument to
+			<code>KRN_reset</code>. If the function is called when
+			it is disabled, then it returns <code>zero</code>.
+			Otherwise, the return value is <code>non-zero</code>.
+			</description>
+		</func>
+		<func name="KRN_startOS">
+			<arg type="const char *" name="taskName">Initial task
+			name, or <code>NULL</code>.</arg>
+			<return type="KRN_TASK_T *">Pointer to initial task TCB.
+			</return>
+			<description>
+			Starts the scheduler. Code following this call executes
+			as a task at minimum priority on the system stack.
+			<par/>
+			The <code>taskName</code> argument points to a
+			<code>NUL</code> terminated character string. If you do
+			not wish to name the initial task, then this argument
+			may be <code>NULL</code>.
+			<par/>
+			The return value provides a pointer to the initial
+			task's task control object. This may be useful if you
+			need to manipulate the initial task in some way.
+			<par/>
+			The task created by this function will use the C system
+			stack.</description>
+		</func>
+		<func name="KRN_startTask">
+			<arg type="KRN_TASKFUNC_T *" name="taskfunc">Pointer to
+			function containing the new task's code.</arg>
+			<arg type="KRN_TASK_T *" name="task"  traceable="Y">Pointer to task
+			control object.</arg>
+			<arg type="uint32_t *" name="workspace">Pointer to
+			task workspace (stack).</arg>
+			<arg type="size_t" name="wssize">Size (in 32 bit words)
+			of workspace.</arg>
+			<arg type="KRN_PRIORITY_T" name="priority">Task
+			priority.</arg>
+			<arg type="void *" name="parameter">Pointer to task
+			startup parameter(s).</arg>
+			<arg type="const char *" name="taskname"><code>NUL</code>code> terminated
+			task name string, or <code>NULL</code> if unnamed.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>((task != NULL) &amp;&amp; (workspace != NULL) &amp;&amp; (wssize != 0))</precondition>
+			</limitations>
+			<description>
+			Starts a new task. The task executes the code in
+			<code>taskfunc</code> (a function with no arguments and a void
+			return type) in the context of a stack created
+			in <code>workspace</code>. Control information for the
+			scheduler is placed in the <code>task</code> object,
+			which must not be altered while the new task is running.
+			<par/>
+			The task <code>priority</code> must lie in the range
+			<code>KRN_LOWEST_PRIORITY</code> to <code>(maxPriority -
+			1)</code>, where <code>maxPriority</code> is the value
+			provided to <code>KRN_reset</code>. The function will
+			adjust invalid <code>priority</code> arguments to
+			ensure that are within the permitted range
+			<par/>
+			The <code>parameter</code> argument can be retrieved by
+			the new task by calling <code>KRN_taskParameter</code>.
+			Its value should be <code>NULL</code> if it is not
+			required.
+			<par/>
+			The <code>taskname</code> parameter points to a
+			<code>NUL</code> terminated character string defining a
+			name for the new task. Task names are not essential. If
+			a task does not have a name, then <code>taskname</code> absolutely
+			<emph>must</emph> be <code>NULL</code>.
+			</description>
+		</func>
+		<func name="KRN_startTimerTask">
+			<arg type="const char *" name="taskName">Timer
+			processing task name, or <code>NULL</code>.</arg>
+			<arg type="uint32_t *" name="ttStack">Pointer to
+			timer task stack space.</arg>
+			<arg type="int32_t" name="ttStackSize">Size of timer stack.
+			</arg>
+			<return type="KRN_TASK_T *">Pointer to timer task TCB.
+			</return>
+			<limitations>
+			<precondition>((ttStack != NULL) &amp;&amp; (ttStackSize != 0))</precondition>
+			</limitations>
+			<description>
+			Starts the timer processing task. Normally you would
+			call this immediately after <code>KRN_startOS</code>.
+			Until you have called this function, no time related
+			functions will work.
+			<par/>
+			The timer processing task runs at the highest task
+			priority. The function's return value provides a handle
+			to the timer processing task.
+			<par/>
+			Timers will only expire correctly if
+			<code>TMR_setClockSpeed</code> has been called. Please see
+			`The tmr module`_. Typically, a BSP will initialise this
+			for you.</description>
+		</func>
+		<func name="KRN_sync">
+			<arg type="KRN_SYNC_T *" name="sync" traceable="Y">Pointer to sync object.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="KRN_TASK_T *">Current task</return>
+			<limitations>
+            <precondition>(sync != NULL)</precondition>
+            </limitations>
+			<description>Block until the number of threads
+			specified during initialisation call <code>KRN_sync</code> for
+			<code>sync</code>.
+			<par/>
+			If <code>timeout</code> is negative, then the caller
+			will always block until synchronisation is achieved. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. A <code>NULL</code>
+			return indicates that synchronisation was not achieved
+			before the timeout expired. In the special case of a zero
+			<code>timeout</code> value, the function will return
+			immediately without blocking: the return value will be
+			<code>NULL</code> unless synchronisation is immediately
+			possible.</description>
+		</func>
+		<func name="KRN_takePool">
+			<arg type="KRN_POOL_T *" name="pool" traceable="Y">Pointer to pool
+			object.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="void *">Pointer to allocated item (or
+			<code>NULL</code>).</return>
+			<limitations>
+			<precondition>(pool != NULL)</precondition>
+			</limitations>
+			<description>Allocate or "take" an item from the pool.
+			<par/>
+			If <code>timeout</code> is negative, then the function
+			will always retrieve an item. If necessary, the caller
+			will block until an item is available. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. A <code>NULL</code>
+			return indicates that no item was retrieved before the
+			timeout expired. In the special case of a zero
+			<code>timeout</code> value, the function will return
+			immediately without blocking: the return value will be
+			<code>NULL</code> unless an item is immediately
+			available.
+			<par/>
+			Non-blocking calls (i.e., with zero
+			<code>timeout</code>) to this function may be made in
+			ISRs provided that <code>pool</code> is not imported or
+			exported.</description>
+		</func>
+		<func name="KRN_taskName">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">Pointer to task or
+			<code>NULL</code>.</arg>
+			<return type="const char *">Pointer to NULL terminated
+			name string.</return>
+			<description>Provides a pointer to a string containing
+			the specified <code>task</code>'s name. The
+			<code>task</code> need not be in the caller's thread. If
+			<code>task</code> is <code>NULL</code> then the name of
+			the calling task is provided.
+			<par/>
+			Users of this function should be aware that a task may
+			not have a name, in which case the return value is a
+			pointer to the string <code>"Unnamed task"</code>.
+			<par/>
+			It is safe to call this function in ISRs, but "Unknown
+			task" may be returned.
+			</description>
+		</func>
+		<func name="KRN_taskParameter">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">Pointer to task or
+			<code>NULL</code>.</arg>
+			<return type="void *">Task startup parameter.</return>
+			<description>Returns the startup parameter provided when
+			the specified <code>task</code>'s was started.
+			<par/>
+			The interpretation of this parameter is up to the task.
+			It may be a pointer to some larger data block. Often it
+			is unused and will be <code>NULL</code></description>
+		</func>
+		<func name="KRN_testFlags">
+			<arg type="KRN_FLAGCLUSTER_T *" name="cluster" traceable="Y">Pointer
+			to event flag cluster object.</arg>
+			<arg type="uint32_t" name="mask">Flag test bit mask.
+			</arg>
+			<arg type="KRN_FLAGOP_T" name="test">Test to perform.
+			</arg>
+			<arg type="int32_t" name="clearFlags">Non-zero value clears
+			flags after test.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="uint32_t">Bitmask containing the state
+			of <emph>all</emph> flags in the cluster (prior to
+			clearing).</return>
+			<limitations>
+			<precondition>((cluster != NULL) &amp;&amp; ((test == KRN_ANY) || (test == KRN_ALL)))</precondition>
+			</limitations>
+			<description>Tests the event flag <code>cluster</code>.
+			The <code>test</code> argument may take one of the
+			following values:
+				<enum>
+					<item val="KRN_ANY">Test whether
+					<emph>any</emph> of <code>flags</code>
+					are set.</item>
+					<item val="KRN_ALL">Test whether
+					<emph>all</emph> of <code>flags</code>
+					are set.</item>
+				</enum>
+			If the test succeeds and <code>clearFlags</code> is
+			<code>non-zero</code>, then flags matching
+			<code>mask</code> are cleared. If the test fails or
+			<code>clearFlags</code> is <code>zero</code>, then no
+			flags are cleared.
+			<par/>
+			If <code>timeout</code> is negative, then the test will
+			always succeed. If necessary, the caller will block
+			until the required conditions are met. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. In the special case of a
+			zero <code>timeout</code> value, the function will
+			return immediately without blocking
+			<par/>
+			Success or failure can be determined from the return
+			value, which always contains the state of
+			<emph>all</emph> flags in the cluster at the time of the
+			test (before any flags were cleared).
+			<par/>
+			Non-blocking calls (i.e., with zero
+			<code>timeout</code>) to this function may be made in
+			ISRs provided that <code>cluster</code> is not imported
+			or exported.</description>
+		</func>
+		<func name="KRN_testFlagsProtected">
+			<arg type="KRN_FLAGCLUSTER_T *" name="cluster" traceable="Y">Pointer
+			to event flag cluster object.</arg>
+			<arg type="uint32_t" name="mask">Flag test bit mask.
+			</arg>
+			<arg type="KRN_FLAGOP_T" name="test">Test to perform.
+			</arg>
+			<arg type="int32_t" name="clearFlags">Non-zero value clears
+			flags after test.</arg>
+			<arg type="IRQ_IPL_T *" name="lowerIPL">Lower IPL.</arg>
+			<return type="uint32_t">Bitmask containing the state
+			of <emph>all</emph> flags in the cluster (prior to
+			clearing).</return>
+			<limitations>
+			<precondition>((cluster != NULL) &amp;&amp; ((test == KRN_ANY) || (test == KRN_ALL)) &amp;&amp; (lowerIPL != NULL))</precondition>
+			</limitations>
+			<description>This is a variant of
+			<code>KRN_testFlags</code> for use with interrupts
+			disabled. If it is necessary to block until the test
+			succeeds, the IPL will be lowered to
+			<code>lowerIPL</code> (interrupts enabled) to allow
+			other activity to proceed. In general, this behaviour is
+			essential to allow some other task to set event flags in
+			the cluster. If the device/interrupt configuration is
+			changed while interrupts are enabled,
+			<code>lowerIPL</code> may be updated to the appropriate
+			new "enable" value.
+			<par/>
+			The function guarantees that interrupts will not be
+			enabled between a successful test and the function's
+			return. This is used when an event flag test must be
+			combined with some other activity in an atomic
+			operation.
+			<par/>
+            Note that this function will return if a timeout occurs,
+            but that the timeout must be set up before entering the
+            function and, if necessary, cancelled afterwards.
+			</description>
+		</func>
+		<func name="KRN_testSemaphore">
+			<arg type="KRN_SEMAPHORE_T *" name="semaphore" traceable="Y">Pointer
+			to semaphore object.</arg>
+			<arg type="uint32_t" name="testvalue">Semaphore test
+			value.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Test successful.
+					</item>
+					<item val="0 (FALSE)">Test failed.</item>
+				</enum>
+			</return>
+			<limitations>
+			<precondition>(semaphore != NULL)</precondition>
+			</limitations>
+			<description>Tests and, if successful, decrements the
+			<code>semaphore</code>'s value by
+			<code>testvalue</code>.
+			<par/>
+			If <code>timeout</code> is negative, then the function
+			will always succeed and return <code>non-zero</code>. If
+			necessary, the caller will block until the semaphore's
+			value is &gt;= <code>testvalue</code>. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. A <code>zero</code> return
+			indicates that the test could not succeed  before the
+			timeout expired. In the special case of a zero
+			<code>timeout</code> value, the function will return
+			immediately without blocking: the return value will be
+			<code>zero</code> unless the test can succeed
+			immediately.</description>
+		</func>
+		<func name="KRN_testSemaphoreProtected">
+			<arg type="KRN_SEMAPHORE_T *" name="semaphore" traceable="Y">Pointer
+			to semaphore object.</arg>
+			<arg type="uint32_t" name="testvalue">Semaphore test
+			value.</arg>
+			<arg type="IRQ_IPL_T *" name="lowerIPL">Lower IPL.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Test successful.
+					</item>
+					<item val="0 (FALSE)">Test failed.</item>
+				</enum>
+			</return>
+			<limitations>
+			<precondition>((semaphore != NULL) &amp;&amp; (lowerIPL != NULL))</precondition>
+			</limitations>
+			<description>This is a variant of
+			<code>KRN_testSemaphore</code> for use with interrupts
+			disabled. If it is necessary to block until the
+			semaphore is available, the IPL will be lowered to
+			<code>lowerIPL</code> (interrupts selectively enabled)
+            to allow other activity to proceed. In general,	this
+            behaviour is essential to allow some other task to "set"
+            the semaphore. If the device/interrupt configuration is
+            changed while interrupts are enabled,
+            <code>lowerIPL</code> may be updated to the appropriate
+            new "enable" value.
+			<par/>
+			The function guarantees that interrupts will not be
+			enabled between granting the semaphore and the
+			function's return. This is used when a semaphore test
+			must be combined with some other activity in an atomic
+			operation. Examples of this can be seen in the mailbox,
+			pool and lock implementation code.
+			<par/>
+            Note that this function will return if a timeout occurs,
+            but that the timeout must be set up before entering the
+            function and, if necessary, cancelled afterwards.
+			</description>
+		</func>
+		<func name="KRN_toggleFlags">
+			<arg type="KRN_FLAGCLUSTER_T *" name="cluster" traceable="Y">Pointer
+			to event flag cluster object.</arg>
+			<arg type="uint32_t" name="mask">Flag toggle mask.
+			</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(cluster != NULL)</precondition>
+			</limitations>
+			<description>Toggle or invert (<code>XOR</code>) the
+			flags indicated by <code>mask</code> in the specified
+			event flag <code>cluster</code>.
+			<par/>
+			Tasks with blocked <code>KRN_testFlags</code> calls may
+			be re-activated as a result, if toggling results in some
+			flags being <code>set</code>.</description>
+		</func>
+		<func name="KRN_delay" vis="virtual">
+			<arg type="uint32_t" name="usecs">Number of microseconds to hibernate.</arg>
+			<return type="void"/>
+			<description>Uninterruptably hibernate for at least <code>usecs</code> miscroseconds. This function may hibernate for a longer period.</description>
+		</func>
+		<func name="KRN_unlock">
+			<arg type="KRN_LOCK_T *" name="lock" traceable="Y">Pointer to resource
+			lock object.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(lock != NULL)</precondition>
+			</limitations>
+			<description>Release lock.<par/>Normally this function
+			is used by the lock holder, although it <emph>may</emph>
+			be called by another task to force unlocking. Forced
+			unlocks are inadvisable since the lock holding task is
+			not notified that it has lost the lock. Forced unlocks
+			are normally limited to	tidying up when tasks are
+			stopped.
+			<par/>
+			Calls to this function may be made in ISRs provided that
+			<code>lock</code> is not imported or exported.
+			</description>
+		</func>
+		<func name="KRN_waitForValue" vis="virtual">
+			<arg type="KRN_TASKQ_T *" name="queue" traceable="Y">Pointer to queue
+				for hibernating task.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in ticks).</arg>
+			<return type="uint32_t"><enum>
+				<item val="Non-zero">Wake up value.</item>
+				<item val="0">Timeout expired.</item>
+			</enum></return>
+			<limitations>
+            <precondition>(queue != NULL)</precondition>
+            </limitations>
+			<description>The calling task waits on an internal
+			queue. When the function eventually returns, it will
+			either be because some other task has woken the caller
+			(for example by calling <code>KRN_wake</code>) or
+			because the timeout expired.
+			<par/>
+			If <code>timeout</code> is negative,  then the caller
+			will always block until another task wakes it. If
+			<code>timeout</code> is positive, then the caller will
+			block for a maximum of <code>timeout</code> scheduler
+			clock ticks before returning. In the special case of a
+			zero <code>timeout</code> value, the function will
+			return immediately without hibernating: this is of
+			little value.</description>
+		</func>
+		<func name="KRN_wake" vis="virtual">
+			<arg type="KRN_TASKQ_T *" name="queue" traceable="Y">Pointer to queue
+			of hibernating tasks.</arg>
+			<return type="KRN_TASK_T *">Pointer to the woken task, or
+			<code>NULL</code>.</return>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Wakes up the hibernating task, if any, at
+			the head of the <code>queue</code>. The task queue must
+			belong to the callers processor. It is not
+			permissible to wake tasks on another processor's
+			queue.
+			<par/>
+			The woken task does not necessarily execute immediately.
+			This will depend of the relative priorities of the
+			caller and the woken task.
+			<par/>
+			The return value identifies the woken task
+			(<code>NULL</code> if the <code>queue</code> was empty).
+			However, take care when using this return value. It is
+			always possible that the woken task could terminate
+			before the caller receives or acts upon	this value.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="KRN_wakeWithValue">
+			<arg type="KRN_TASKQ_T *" name="queue" traceable="Y">Pointer to queue
+			of hibernating tasks.</arg>
+			<arg type="uint32_t" name="value">Value to pass to woken task.</arg>
+			<return type="KRN_TASK_T *">Pointer to the woken task, or
+			<code>NULL</code>.</return>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Wakes up the hibernating task, if any, at
+			the head of the <code>queue</code>. The task queue must
+			belong to the callers processor. It is not
+			permissible to wake tasks on another processor's
+			queue.
+			<par/>
+			The woken task does not necessarily execute immediately.
+			This will depend of the relative priorities of the
+			caller and the woken task.
+			<par/>
+			This function <emph>must not</emph> be used to wake tasks
+			that have blocked on a synchronisation primitive.
+			<code>Value</code> will be discarded if the task did not
+			sleep via <code>KRN_hibernateWithValue</code> or <code>KRN_waitForValue</code>.
+			<par/>
+			The return value identifies the woken task
+			(<code>NULL</code> if the <code>queue</code> was empty).
+			However, take care when using this return value. It is
+			always possible that the woken task could terminate
+			before the caller receives or acts upon	this value.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="KRN_resumeWithValue">
+			<arg type="KRN_TASK_T *" name="task" traceable="Y">Pointer to hibernating task.</arg>
+			<arg type="uint32_t" name="value">Value to pass to task</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(task != NULL)</precondition>
+			</limitations>
+			<description>Wakes up <code>task</code>. The task must
+			belong to the caller's processor. It is not
+			permissible to wake tasks on another processor. This is
+			a non-op if <code>task</code> is not asleep.
+			<par/>
+			The woken task does not necessarily execute immediately.
+			This will depend of the relative priorities of the
+			caller and the woken task.
+			<par/>
+			This function <emph>must not</emph> be used to wake tasks
+			that have blocked on a synchronisation primitive.
+			<code>value</code> will be discarded if the task did not
+			sleep via <code>KRN_hibernateWithValue</code> or <code>KRN_waitForValue</code>.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<func name="KRN_wakeAll">
+			<arg type="KRN_TASKQ_T *" name="queue" traceable="Y">Pointer to queue
+			of hibernating tasks.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(queue != NULL)</precondition>
+			</limitations>
+			<description>Wakes up <emph>all</emph> hibernating tasks, if any,
+			on the <code>queue</code>. The task queue must
+			belong to the caller's processor. It is not
+			permissible to wake tasks on another processor's
+			queue.
+			<par/>
+			The woken tasks do not necessarily execute immediately.
+			Scheduling will depend of the relative priorities of the
+			caller and the woken task(s).
+			<par/>
+			The function is implemented in such a way as to
+			guarantee that the caller will not get stuck in an
+			infinite loop if woken, higher priority, tasks hibernate
+			again before the function is complete. Any given
+			task will be woken only once by this function.
+			<par/>
+			It is safe to call this function in ISRs.
+			</description>
+		</func>
+		<postinclude lib='N'>meos/target/krn.h</postinclude>
+		<epilogue>
+
+/*
+* Hidden type for internal stats variables
+*/
+typedef struct {
+	uint32_t monotonics;
+	uint32_t perfCount[TMR_PERFCOUNTERS];
+} KRN_RAWSTATS_T;
+
+/* The following items complete the partial type definitions of some structures given earlier */
+
+struct KRN_stats_tag {
+    const char *name;
+    int32_t runCount;
+    KRN_RAWSTATS_T stats;
+};
+
+struct KRN_timer_tag {
+    KRN_POOLLINK;
+    PARAHEAD
+    uint64_t deltaJiffy;		/* jiffy delta from previous timer */
+    int32_t active;             /* timer active flag                                   */
+    KRN_TIMERFUNC_T *tfunc; /* pointer to function to execute when timer expires   */
+    void *tpar;             /* parameter for timer function                        */
+    PARATAIL
+};
+
+struct  KRN_task_tag {
+    KRN_POOLLINK;
+    PARAHEAD
+    void (*schedOut)(void);
+    void (*schedIn)(void);
+    /*
+    * In addition to a task's priority value, we maintain a pointer to a bit-set
+    * and a bit value which are used by an optimised search algorithm in the
+    * scheduler, which can locate the next task very quickly even when there is a
+    * large number of (possibly unused) priority levels
+    */
+    uint32_t *priFlags;			/* pointer to the flag word for task priority       */
+    KRN_PRIORITY_T priVal;      /* task priority value                              */
+    KRN_TASKQ_T *holdQueue;     /* pointer to holding queue for this task           */
+    uint8_t priBit;			/* flag bit for task priority                       */
+    uint8_t timedOut;
+    uint8_t reason;
+#ifdef CONFIG_DEBUG_STACK_CHECKING
+    uint32_t *stackStart;       /* for stack monitoring                             */
+    uint32_t *stackEnd;         /* for stack monitoring                             */
+#endif
+    const char *name;                 /* task name string                                 */
+    KRN_CTX_T savedContext;
+
+    void *parameter;            /* task startup parameter                           */
+#ifdef CONFIG_DEBUG_PARANOIA
+    uintptr_t wm;				/* for destruction 				    */
+#endif
+    KRN_DEBUGLINK_T	taskLink ;  /* for maintaining a chain of all tasks in a system */
+#ifdef CONFIG_DEBUG_PROFILING
+    KRN_STATS_T *statsPtr;		/* pointer to performance stats entry for this task */
+#endif
+    /*
+    * We need a couple of parameters in a TCB to hold information when a task
+    * blocks on a sempahore/mailbox/pool etc. These are used for different
+    * things at different times. The unions below allow us to keep storage
+    * to a minimum while retaining meaningful names in the source code.
+    */
+    union {
+        uintptr_t testPar;        /* semaphore/efc test value or...                 */
+        uintptr_t testResult;     /* ... testResult                                 */
+    } p1;
+    union {
+        uint32_t testType;       /* event flag cluster test type or...             */
+        uint32_t seqNum;         /* import/export protocol sequence number or...   */
+        uint32_t ackStatus;      /* import/export protocl ACK status info          */
+    } p2;
+    PARATAIL
+};
+
+struct KRN_job_tag {
+			KRN_POOLLINK;
+			PARAHEAD
+			KRN_TASKFUNC_T *fn;
+			void *par;
+			const char *name;
+			PARATAIL
+};
+
+struct KRN_wq_tag {
+	PARAHEAD
+#ifdef CONFIG_FEATURE_IMPEXP
+	KRN_IMPEXP_T impexp;
+#endif
+	KRN_TASK_T *task;
+	uint32_t tasks;
+	KRN_POOL_T jobs;
+	KRN_MAILBOX_T mbox;
+	PARATAIL
+};
+
+typedef void _KRN_NOTIFYFUNC_T(uint32_t threadMask, uint8_t exportID, uint32_t objValue);
+typedef void _KRN_CCBHANDLER_T(void *cmd);
+typedef void _KRN_REQUESTFUNC_T(KRN_IMPEXP_T *impexp, uint32_t command, uint32_t subcmd, uint32_t seq, uint64_t p64a, uint64_t p64b);
+typedef void _KRN_INITFUNC_T(void);
+struct KRN_schedule_tag {
+	PARAHEAD
+	KRN_TASK_T *deferred;        		/* pointer to previous task for deferred context save */
+	uint32_t priFlags[(CONFIG_FEATURE_MAX_PRIORITIES + 31)/32];			/* array of flags for the optimised task queuesearch algorithm */
+	KRN_TASKQ_T *priQueues;			/* pointer to the set of prioritised task queues         */
+	uint32_t *maxPriFlags;			/* pointer to highest used element of priFlags */
+	uint32_t hwThread;              	/* the processor on which we are running */
+	uint32_t hwThreads;			/* The number of processors */
+	KRN_TASK_T startupTCB;       		/* TCB for task created by KRN_startOS            */
+	KRN_TASK_T timerTCB;			/* TCB for timer processing task                  */
+	KRN_MAILBOX_T timerMailbox;		/* mailbox for timer task       */
+	DQ_T timers;				/* timer processing queue       */
+	DQ_T liveTasks;			     	/* list of all tasks (for Codescape) */
+
+	uint32_t lastTimer;
+	int32_t timeSlice;			/* current timeSlice period     */
+	volatile uint32_t timerExpire;		/* time slice counter           */
+	volatile uint32_t sliceExpire;		/* time slice counter           */
+
+	uint32_t stackInit;			/* stack initialisation value */
+	KRN_PRIORITY_T maxPriority;	 	/* maximum priority value configured by the user */
+#ifdef CONFIG_DEBUG_PROFILING
+	KRN_RAWSTATS_T stats;			/* "previous" statistics store for scheduler perf stats calculations */
+	KRN_STATS_T *nullStats;			/* pointer to null state performance statistics slot */
+	KRN_STATS_T *tIntStats;			/* pointer to timer interrupt performance statistics slot */
+	KRN_STATS_T *dIntStats;			/* pointer to device interrupt performance statistics slot */
+	KRN_STATS_T *schedStats;		/* pointer to scheduler performance statistics slot */
+#endif
+#ifdef CONFIG_FEATURE_IMPEXP
+	_KRN_NOTIFYFUNC_T *notifyFunc;  /* pointer to asynch. notify function          */
+	_KRN_REQUESTFUNC_T *requestFunc;/* pointer to IPM request function             */
+	_KRN_INITFUNC_T *initFunc;      /* pointer to IPM init function                */
+	KRN_IMPORT_T *importTables[CONFIG_FEATURE_MAX_PROCESSORS];  /* pointers to thread import tables */
+	uint8_t maxImpIds[CONFIG_FEATURE_MAX_PROCESSORS];     /* maximum Ids to be imported */
+	KRN_EXPORT_T *exportTable;       /* pointer to import table */
+	uint8_t maxExpId;          /* maximum Id to be exported */
+#endif
+	PARATAIL
+};
+
+/*
+* The following items are exported for developer access and to aid separate compilation.
+* However,they aren't part of the published interface.
+*/
+
+extern KRN_SCHEDULE_T *_KRN_schedule;
+
+extern KRN_TASK_T *_KRN_current;
+
+#ifndef MEOS_NO_FUNCS
+void _KRN_zeroStats(KRN_STATS_T *statsSlot);
+void _KRN_zeroRawStats(KRN_RAWSTATS_T *s);
+void _KRN_grabStats(KRN_RAWSTATS_T *s);
+void _KRN_deltaStats(KRN_RAWSTATS_T *diff, KRN_RAWSTATS_T *a, KRN_RAWSTATS_T *b);
+void _KRN_accStats(KRN_STATS_T *acc, KRN_RAWSTATS_T *n, int32_t neg);
+#endif
+
+extern KRN_STATS_T *_ThreadStatsArray;
+extern int32_t _ThreadStatsArraySize;
+extern int32_t _ThreadStatsCtrl;
+extern int64_t _ThreadRunStart;
+extern int64_t _ThreadRunTicks;
+extern int32_t _KRN_saveCounters; /* control for undocumented feature which treats perf counters as part of task context */
+
+extern int64_t _KRN_traceTime;
+
+/*
+* Macro for testing whether we are in normal task context with interrupts enabled
+* Used in asserts to catch inappropriate use of API functions.
+*/
+#define _KRN_TASK_CONTEXT (IRQ_getIPL() == 0)
+
+/* Internal functions - generally not for public use */
+
+/* Asynchronous task hold queue */
+extern KRN_TASKQ_T *_KRN_asyncHoldQueue;
+
+#ifndef MEOS_NO_FUNCS
+
+/* Wake a task by timeout */
+extern void _KRN_timeoutWake(KRN_TIMER_T *timer, void *task);
+
+/*
+** FUNCTION:      _KRN_wakeTask
+**
+** DESCRIPTION:   Puts a given task back onto the its priority queue (internal)
+**
+** RETURNS:       Flag whether rescheduler is required to execute.
+*/
+static inline int32_t _KRN_wakeTask(KRN_TASK_T *t)
+{
+	KRN_PRIORITY_T currPri;
+
+	/* priority of current task - possibly no current task if invoked from an ISR */
+	currPri = _KRN_current ? _KRN_current-&gt;priVal : -1;
+
+	/* move task from holding queue to appropriate ready queue */
+	t-&gt;holdQueue = _KRN_schedule-&gt;priQueues + t-&gt;priVal;
+	DQ_addTail(t-&gt;holdQueue, t);
+
+	/* set the "priority queue in use" flag for the optimised scheduler search */
+	*(t-&gt;priFlags) |= 1&lt;&lt;t-&gt;priBit;
+
+	/*
+	* Reschedule needed? Will not destroy any pending reschedule notification
+	* as this result is OR'd with the pending reschedule flag.
+	*/
+	return (t-&gt;priVal &gt; currPri);
+}
+
+/*
+** FUNCTION:      _KRN_wakeOneTask
+**
+** DESCRIPTION:   Wakes the first task on the given hold queue (internal)
+**
+** RETURNS:       Pointer to the task awakened
+*/
+static inline KRN_TASK_T *_KRN_wakeOneTask(KRN_TASKQ_T *queue, int32_t *reschedule)
+{
+	KRN_TASK_T *t = (KRN_TASK_T*)DQ_removeHead(queue);
+
+	/* If there was nothing on the queue, do nothing */
+	if (t)
+		*reschedule |= _KRN_wakeTask(t);
+
+	return t;
+}
+
+/*
+** FUNCTION:      _KRN_hibernateTask
+**
+** DESCRIPTION    Internal kernel task hibernation/sleep. Allows tasks to be
+**                descheduled within a kernel/interrupt context.
+**
+** RETURNS        void
+*/
+static inline void _KRN_hibernateTask(KRN_TASK_T *t, KRN_TASKQ_T *queue)
+{
+	t-&gt;holdQueue = queue;
+}
+
+#endif
+
+#define KRN_proc() (_KRN_schedule->hwThread)
+#define KRN_procs() (_KRN_schedule->hwThreads)
+#define KRN_raiseIPL IRQ_raiseIPL
+#define KRN_restoreIPL IRQ_restoreIPL
+#define _KRN_getIPL IRQ_getIPL
+#define KRN_intsDisabled(X) ((X) &gt; 0)
+#define KRN_setTimer(TIMER, FN, PAR, DELAY) KRN_setSoftTimer((TIMER), (FN), (PAR), (DELAY), 0)
+#define _KRN_ignoreZeroTimeout() do {if (_KRN_current) __sync_val_compare_and_swap(&amp;_KRN_current->timedOut, KRN_ZERO, KRN_RUNNING);} while(0)
+#define KRN_hibernate(Q, TIMEOUT) (void)KRN_hibernateWithValue((Q), (TIMEOUT))
+#define KRN_delay(USECS) __extension__ ({ \
+if (_KRN_schedule &amp;&amp; (_KRN_schedule-&gt;timerTCB.reason != 0)) { \
+KRN_TASKQ_T q; \
+DQ_init(&amp;q); \
+KRN_hibernate(&amp;q, USECS); \
+} else { /* Timer task not started */ \
+	uint32_t f = TMR_clockSpeed(); \
+	uint32_t u = (TMR_getMonotonic() / f) + (USECS); \
+	while ((TMR_getMonotonic() / f) &lt; u); \
+} \
+})
+#define KRN_waitForValue(TIMEOUT) __extension__ ({ \
+KRN_TASKQ_T q; \
+DQ_init(&amp;q); \
+KRN_hibernateWithValue(&amp;q, (TIMEOUT)); \
+})
+#define KRN_wake(Q) KRN_wakeWithValue((Q), 0)
+
+#ifndef MEOS_NO_FUNCS
+
+static inline IRQ_IPL_T _KRN_raiseIPLWithTimeout(KRN_TIMER_T *timer, int32_t timeout)
+{
+	KRN_TASK_T *t;
+	/* Only do timeouts if not at elevated IPL */
+	if (IRQ_bg()) {
+		t = _KRN_current;
+		if (t) {
+        		if (!timeout)
+                		t->timedOut = KRN_ZERO;
+        		else {
+                		t->timedOut = KRN_RUNNING;
+                		if (timeout > 0)
+                			KRN_setTimer(timer, _KRN_timeoutWake, t, timeout);
+                	}
+		}
+	} else {
+		DBG_assert(((timeout == 0) || (timeout == KRN_INHERIT)), "Non-zero timeout with IPL raised");
+	}
+
+	/* the entire transaction is protected to prevent the caller being removed
+	   at an inconvenient moment which would leave the list and the semaphore inconsistent.
+	 */
+	return IRQ_raiseIPL();
+}
+
+static inline void _KRN_restoreIPLWithTimeout(IRQ_IPL_T ipl, KRN_TIMER_T *timer, int32_t timeout)
+{
+	if ((timeout > 0) &amp;&amp; (!KRN_intsDisabled(ipl)))
+		KRN_cancelTimer(timer);
+	IRQ_restoreIPL(ipl);
+}
+
+#ifdef CONFIG_FEATURE_IMPEXP
+/*
+** FUNCTION:      _KRN_waitOnSequence
+**
+** DESCRIPTION    Puts a task on an object's wait queue, derive the message
+**                sequence number, send appropriate message. An ACK removes the
+**                task from the queue.
+**
+** RETURNS        void
+*/
+static inline void _KRN_waitOnSequence(KRN_TASK_T *t, KRN_TASKQ_T *queue,
+		uint32_t *val, KRN_IMPEXP_T *imp, uint32_t cmd,
+		uint32_t sub, uintptr_t p64a, uintptr_t p64b)
+{
+	int seq;
+
+	DQ_remove(t);
+	_KRN_hibernateTask(t, queue);
+	DQ_addTail(queue, t);
+	seq = (*val)++ &amp; 0xff;
+	t->p1.testPar = p64a;
+	t->p2.seqNum = seq;
+	_KRN_schedule->requestFunc(imp, cmd, sub, seq, p64a, p64b);
+}
+
+#endif
+#endif
+</epilogue>
+	</interface>
+</module>

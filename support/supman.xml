@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="doc.xsl"?>
+<manual xmlns:xi="http://www.w3.org/2001/XInclude">
+	<xi:include href="./1/timisr/timisr.xml"/>
+	<xi:include href="./1/librproc/res.xml"/>
+	<xi:include href="./1/lopri/lopri.xml"/>
+	<xi:include href="./1/qio/qio.xml"/>
+	<xi:include href="./1/sntp/sntp.xml"/>
+	<xi:include href="./1/srtc/srtc.xml"/>
+	<xi:include href="./1/tftp/tftp.xml"/>
+	<xi:include href="./1/cpio/cpio.xml"/>
+	<xi:include href="./1/mass/mass.xml"/>
+	<xi:include href="./1/mvz/mvz/mvz.xml"/>
+	<xi:include href="./1/mvz/vio/vio.xml"/>
+	<xi:include href="./3/newtron/newtron.xml"/>
+	<xi:include href="./3/lwip/lwip.xml"/>
+	<xi:include href="./3/fatfs/fatfs.xml"/>
+	<xi:include href="./3/zlib/zlib.xml"/>
+	<xi:include href="./1/drivers/dwethgmac/dwethgmac.xml"/>
+	<xi:include href="./1/drivers/fdc/fdc.xml"/>
+	<xi:include href="./1/drivers/lan9211/lan9211.xml"/>
+	<xi:include href="./1/drivers/mrf24g/mrf_connection.xml"/>
+	<xi:include href="./1/drivers/ns16550a/ns16550a.xml"/>
+	<xi:include href="./1/drivers/pic32uart/pic32uart.xml"/>
+	<xi:include href="./1/drivers/tcpsocket/tcpsocket.xml"/>
+	<xi:include href="./1/drivers/uart/uart.xml"/>
+	<xi:include href="./1/drivers/virtioconsole/virtioconsole.xml"/>
+	<xi:include href="./1/drivers/virtionet/virtionet.xml"/>
+	<xi:include href="./1/drivers/xpsethlite/xpsethlite.xml"/>
+</manual>

@@ -1,0 +1,368 @@
+menu "MIPS configuration"
+	depends on ARCH_MIPS
+
+	config ARCH_MIPS_SYSTEM_H
+	bool
+
+	config ARCH_MIPS_RTT
+	bool
+
+	choice
+		prompt "Endian"
+		depends on ARCH_MIPS
+		default ARCH_MIPS_LITTLE_ENDIAN
+		help
+			Selects the target endian.
+
+		config ARCH_MIPS_BIG_ENDIAN
+		bool "Big"
+		help
+			Target big endian machines.
+
+		config ARCH_MIPS_LITTLE_ENDIAN
+		bool "Little"
+		help
+			Target little endian machines.
+
+	endchoice
+
+	config MIPS_MODEL
+	string "MIPS model"
+	default "interAptiv-LE"
+	help
+		Specify the MIPS model to use during testing. For simulation,
+		this specifies the simulation model to use, for hardware with
+		acquisition, this specifies the bitstream or board to request.
+
+
+	config ARCH_MIPS_TOOLCHAIN_IMG
+	bool
+	default y if ARCH_MIPS_R6
+	default n
+	help
+		Use the Codescape R6  (mips-img-elf) toolchain.
+
+	config ARCH_MIPS_TOOLCHAIN_MTI
+	default n if ARCH_MIPS_R6
+	default n if ARCH_MIPS_MICRO_R6
+	default y
+	bool
+	help
+		Use the Codescape (mips-mti-elf) toolchain.
+
+	config TOOLS_TRIPLET
+	string
+	default "mips-img-elf" if ARCH_MIPS_TOOLCHAIN_IMG
+
+	config TOOLS_AR
+	string
+	default "mips-img-elf-ar" if ARCH_MIPS_TOOLCHAIN_IMG
+
+	config TOOLS_CC
+	string
+	default "mips-img-elf-gcc" if ARCH_MIPS_TOOLCHAIN_IMG
+
+	config TOOLS_CXX
+	string
+	default "mips-img-elf-g++" if ARCH_MIPS_TOOLCHAIN_IMG
+
+	config TOOLS_OBJCOPY
+	string
+	default "mips-img-elf-objcopy" if ARCH_MIPS_TOOLCHAIN_IMG
+
+	config TOOLS_STRIP
+	string
+	default "mips-img-elf-strip" if ARCH_MIPS_TOOLCHAIN_IMG
+
+	config TOOLS_VENDOR
+	string
+	default img if ARCH_MIPS_TOOLCHAIN_IMG
+
+	config TOOLS_TRIPLET
+	string
+	default "mips-mti-elf" if ARCH_MIPS_TOOLCHAIN_MTI
+
+	config TOOLS_AR
+	string
+	default "mips-mti-elf-ar" if ARCH_MIPS_TOOLCHAIN_MTI
+
+	config TOOLS_CC
+	string
+	default "mips-mti-elf-gcc" if ARCH_MIPS_TOOLCHAIN_MTI
+
+	config TOOLS_CXX
+	string
+	default "mips-mti-elf-g++" if ARCH_MIPS_TOOLCHAIN_MTI
+
+	config TOOLS_OBJCOPY
+	string
+	default "mips-mti-elf-objcopy" if ARCH_MIPS_TOOLCHAIN_MTI
+
+	config TOOLS_STRIP
+	string
+	default "mips-mti-elf-strip" if ARCH_MIPS_TOOLCHAIN_MTI
+
+	config TOOLS_VENDOR
+	string
+	default mti if ARCH_MIPS_TOOLCHAIN_MTI
+
+	config DEBUG_HAVE_BT
+		bool
+
+	choice
+		prompt "Instruction set"
+		depends on ARCH_MIPS
+		default ARCH_MIPS_MIPS32
+		help
+			Selects the instruction set to use.
+
+		config ARCH_MIPS_MIPS32
+		bool "MIPS32"
+		select DEBUG_HAVE_BT
+		select ARCH_MIPS_TOOLCHAIN_MTI
+		help
+			Generate MIPS32 code.
+
+		config ARCH_MIPS_MICRO
+		bool "microMIPS32"
+		select ARCH_MIPS_TOOLCHAIN_MTI
+		help
+			Generate microMIPS code.
+
+		config ARCH_MIPS_R6
+		bool "MIPS32R6"
+		select DEBUG_HAVE_BT
+		select ARCH_MIPS_TOOLCHAIN_IMG
+		help
+			Generate MIPS32R6 code.
+
+		config ARCH_MIPS_MICRO_R6
+		bool "microMIPS32R6"
+		select ARCH_MIPS_TOOLCHAIN_IMG
+		help
+			Generate microMIPS32R6 code.
+
+	endchoice
+
+	choice
+		prompt "Floating point model"
+		depends on ARCH_MIPS
+		default ARCH_MIPS_SOFT_FLOAT
+		help
+			Selects the floating point implementation model. This will be passed
+			to the toolchain. The same configuration should be used in user
+			code.
+
+		config ARCH_MIPS_NO_FLOAT
+		bool "None"
+		select BROKEN_PRINTF
+		help
+			Build with -mno-float for no floating point support. Do not include
+			floating point register context switching. This may break the test
+			suite. Use soft float instead.
+
+		config ARCH_MIPS_SOFT_FLOAT
+		bool "Soft"
+		select FEATURE_FLOAT
+		help
+			Build with -msoft-float for emulated floating point support. Do not
+			include floating point register context switching.
+
+		config ARCH_MIPS_HARD_FLOAT
+		bool "Hard"
+		select FEATURE_FLOAT
+		help
+			Build with -mhard-float for hardware floating point support. Include
+			floating point register context switching.
+
+	endchoice
+
+	config ARCH_MIPS_DSP
+	bool "DSP support"
+	help
+		Build with -mdsp. Include DSP ASE register context switching.
+
+	config ARCH_MIPS_MSA
+	bool "MSA support"
+	depends on ARCH_MIPS_HARD_FLOAT
+	help
+		Include MSA register context switching. Disabled due to lack of
+		toolchain support.
+
+	choice
+		prompt "Interrupt model"
+		depends on ARCH_MIPS
+		default ARCH_MIPS_BASELINE
+		help
+			Selects the interrupt model to use.
+
+		config ARCH_MIPS_BASELINE
+		bool "Base line interrupts"
+		help
+			Use IP0-7, available on all MIPS cores, providing 2 soft interrupts
+			and 5 external interrupts. Routing SoC level interrupts to IP2-7
+			must be performed manually.
+
+		config ARCH_MIPS_GIC
+		bool "Global Interrupt Controller"
+		select FEATURE_IPI_AVAILABLE
+		help
+			Use the GIC to map SoC interrupts to the 63 core interrupts via EIC.
+
+		config ARCH_MIPS_PIC
+		bool "PIC32 interrupt controller"
+		help
+			Use the PIC32 interrupt controller to map interrupts via EIC.
+
+		config ARCH_MIPS_HWSTAT
+		bool "HWSTAT interrupt controller"
+		help
+			Use the META-like HW interrupt controller to map interrupts via VIC.
+
+		config ARCH_MIPS_BASELINE_XPSINTC
+		bool "Xilinx FPGA interrupt controller"
+		select FEATURE_IPI_AVAILABLE
+		select DRIVER_MIPSFPGA_INTC
+		help
+			Use the Xilinx FPGA interrupt controller to map interrupts via Baseline.
+
+	endchoice
+
+	config ARCH_MIPS_PIC_PROC
+		string "PIC processor"
+		depends on ARCH_MIPS_PIC
+		default "32MZ2048EFM144" if BSP_PIC32_STARTERKIT
+		default "32MZ2048EFG100" if BSP_CHIPKIT_WIFIRE
+		default "32MZ2048ECG100" if !(BSP_PIC32_STARTERKIT || BSP_CHIPKIT_WIFIRE)
+		help
+			Specify the PIC revision exposed by picpart.h
+
+	config ARCH_MIPS_MCU_ASE
+	bool "MCU ASE available"
+	help
+		Support the MCU ASE.
+
+	config ARCH_MIPS_PIC_MVEC
+		bool "PIC multivector mode"
+		depends on ARCH_MIPS_PIC
+		default n
+		help
+			Use 8K at EBASE+0x200 for interrupt vectors, providing maximum
+			performance. Otherwise use 128 bytes at the same location, but with
+			higher interrupt latency.
+
+	config ARCH_MIPS_MT
+	bool "MT support"
+	default y if QUICK_MT
+	default n
+	help
+		Support for the MIPS MT ASE.
+
+	config ARCH_MIPS_BASELINE_MT
+	bool "Use MT for inter-VPE IPI"
+	depends on ARCH_MIPS_BASELINE && ARCH_MIPS_MT
+	select FEATURE_IPI_AVAILABLE
+	default y
+	help
+		Use the MT ASE to route IPI between VPEs.
+
+	choice
+		prompt "EIC support"
+		depends on ARCH_MIPS_GIC
+		default ARCH_MIPS_AUTO_EIC
+		help
+			Selects the EIC support available to MEOS.
+
+		config ARCH_MIPS_AUTO_EIC
+		bool "Auto probe EIC"
+		help
+			Probe for EIC support, use if found.
+
+		config ARCH_MIPS_NO_EIC
+		bool "No EIC"
+		help
+			EIC unsupported, support optimised out.
+
+		config ARCH_MIPS_YES_EIC
+		bool "Require EIC"
+		help
+			EIC required, support for Vectored Interrupts optimised out.
+
+	endchoice
+
+	config ARCH_MIPS_VZ
+	bool "VZ virtualisation support"
+	default n
+	help
+		Adds support for virtualisation using the MIPS VZ ASE. This adds both
+		time and space overheads to the root ISRs.
+
+	config ARCH_MIPS_GIC_OVERRIDE_TIMER
+	int "Override timer interrupt target"
+	depends on ARCH_MIPS_GIC
+	default 0
+	help
+		If non-zero, override the target intNum for timer interrupts.
+
+	config ARCH_MIPS_GIC_OVERRIDE_FDC
+	int "Override FDC interrupt target"
+	depends on ARCH_MIPS_GIC
+	default 0
+	help
+		If non-zero, override the target intNum for FDC interrupts.
+
+	config ARCH_MIPS_HWSTAT_BASE
+	hex "HWSTAT base address"
+	depends on ARCH_MIPS_HWSTAT
+	default "0xa4000050"
+	help
+		Override the HW base address.
+
+	config ARCH_MIPS_INTERLINK
+	bool "Interlinking between microMIPS and MIPS ISAs"
+	help
+		Support interlinking via -minterlink-compressed.
+
+	config ARCH_MIPS_MANY_SECTIONS
+	bool "Use many sections for better linking"
+	help
+		Use -ffunction-sections and -fdata-sections to
+		improve link optimisation.
+
+	config ARCH_MIPS_JIFFIES_PER_US
+	int "Default jiffies per uS"
+	default 1
+	help
+		Set the default number of CP0 count/compare ticks per microsecond. This
+		may be overridden with TMR_setClockSpeed().
+
+	config ARCH_MIPS_PCINT
+	bool "Performance counter interrupt support"
+	default nO
+	help
+		Support overflowing C0_PERFCNT0/1 to _TMR_overflow0/1. This degrades
+		overall interrupt performance. It is up to the user to configure
+		C0_PERFCTL0/1 appropriately.
+
+	config ARCH_MIPS_QPC
+	bool "Hardware supports 4 performance counters"
+	default nO
+	help
+		Enable support for 4 performance counters on hardware that supports it.
+
+	config ARCH_MIPS_MALLOC_BFL
+	bool "__malloc_lock/unlock"
+	default yES
+	help
+		Enable support for newlib malloc reentrancy. Don't get caught allocating
+		without this, or bad things will happen.
+
+	config ARCH_MIPS_REENT
+	bool "newlib reentrancy switching"
+	default yES
+	help
+		Enable support for newlib struct _reent switching. Don't get caught calling
+		non-reentrant functions in different tasks without this, or bad things will
+		happen.
+
+endmenu

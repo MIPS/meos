@@ -1,0 +1,13 @@
+config MASS_RAM
+bool "RAM/ROM disk support"
+depends on MASS
+default n
+help
+	Memory backed file system support.
+
+config MASS_PARTITION
+bool "Partitioning support"
+depends on MASS
+default n
+help
+	Virtual device that represents a subset of another device.

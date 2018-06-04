@@ -1,0 +1,181 @@
+#!/usr/bin/env python
+
+import os, subprocess, string, collections, argparse
+
+def check_output(arg):
+	p = subprocess.Popen(arg, stdout=subprocess.PIPE)
+	r, _ = p.communicate()
+	return r
+
+root = collections.OrderedDict()
+
+def findFirst(compatible):
+	def findFirstNode(needle):
+		if type(needle) is collections.OrderedDict:
+			if "compatible" in needle:
+				compatibility = needle["compatible"]
+				if type(compatibility) is list:
+					for trial in compatibility:
+						if trial == compatible:
+							return needle
+				else:
+					if compatibility == compatible:
+						return needle
+			return findFirstTree(needle)
+		else:
+			return None
+
+	def findFirstTree(needle):
+		filtered = collections.OrderedDict((k, v) for k, v in needle.items() if (type(v) is collections.OrderedDict) and (k != "__parent"))
+		for child in filtered:
+			result = findFirstNode(filtered[child])
+			if not result is None:
+				return result
+		return None
+	result = findFirstNode(root)
+	return result
+
+def findUp(node, p):
+	try:
+		return node[p]
+	except KeyError:
+		return findUp(node["__parent"], p)
+
+def findPH(node, p):
+	if ("phandle" in node.keys()) and (node["phandle"] == p):
+		return node
+	else:
+		for child in node:
+			if (type(node[child]) is collections.OrderedDict) and (child != "__parent"):
+				result = findPH(node[child], p)
+				if result is not None:
+					return result
+		return None
+
+def addChildren(parent, filename):
+	lines = check_output(["PP/fdtget", "-l", filename, parent["___hidden_path"]]).strip().split('\n')
+	i = 0
+	for line in lines:
+		if line:
+			parent[line] = collections.OrderedDict()
+			parent[line]["___hidden_path"] = parent["___hidden_path"] + "/" + line
+			parent[line]["__parent"] = parent
+			split = string.split(line, "@")
+			if len(split) > 1:
+				parent[line]["__name"] = split[0]
+				parent[line]["__address"] = split[1]
+			else:
+				parent[line]["__name"] = line
+			i = i + 1
+			addChildren(parent[line], filename)
+
+def addProperties(parent, filename):
+	for child in parent:
+		if (type(parent[child]) is collections.OrderedDict) and (child != "__parent"):
+			addProperties(parent[child], filename)
+	lines = check_output(["PP/fdtget", "-p", filename, parent["___hidden_path"]]).strip().split('\n')
+	for line in lines:
+		if line:
+			value = check_output(["PP/fdtget", filename, parent["___hidden_path"], line])
+			if value.find(' ') != -1:
+				value = value.strip().split(' ')
+			else:
+				value = value.strip()
+			parent[line] = value
+
+def printTree(parent):
+	for child in parent:
+		if type(parent[child]) is collections.OrderedDict:
+			print(child + " = {")
+			printTree(parent[child])
+			print("}")
+		elif child != "___hidden_path":
+			print(child + " = " + str(parent[child]))
+
+def walkItem(parent, first, prev, node, next):
+	if node is not None and "__parent" in node:
+		parent = node["__parent"]
+	if type(node) is collections.OrderedDict:
+		if "compatible" in node:
+			compatibility = node["compatible"]
+			if type(compatibility) is list:
+				for trial in compatibility:
+					fragment = genpath + "/" + trial + ".py"
+					if os.path.isfile(fragment):
+						b4 = os.getcwd()
+						os.chdir(os.path.dirname(fragment))
+						execfile(os.path.basename(fragment))
+						os.chdir(b4)
+						break
+			else:
+				fragment = genpath + "/" + compatibility + ".py"
+				if os.path.isfile(fragment):
+					b4 = os.getcwd()
+					os.chdir(os.path.dirname(fragment))
+					execfile(os.path.basename(fragment))
+					os.chdir(b4)
+		walkTree(node)
+
+def walkTree(parent):
+	filtered = collections.OrderedDict((k, v) for k, v in parent.items() if (type(v) is collections.OrderedDict) and (k != "__parent"))
+	if len(filtered) == 1:
+		for child in filtered:
+			walkItem(filtered, filtered[child], None, filtered[child], None)
+	elif len(filtered) == 2:
+		first = None
+		for child in filtered:
+			if first is None:
+				first = filtered[child]
+			else:
+				walkItem(filtered, first, None, first, filtered[child])
+				walkItem(filtered, first, first, filtered[child], None)
+	else:
+		first = None
+		prev = None
+		node = None
+		for child in filtered:
+			if first is None:
+				first = filtered[child]
+				prev = first
+			elif node is None:
+				node = filtered[child]
+				walkItem(filtered, first, None, prev, node)
+			else:
+				walkItem(filtered, first, prev, node, filtered[child])
+				prev = node
+				node = filtered[child]
+		walkItem(filtered, first, prev, node, None)
+
+parser = argparse.ArgumentParser(description = "Walk a device tree.")
+parser.add_argument('fragment_path', help = "Directory full of python fragments named after \"compatible\".")
+parser.add_argument('dtb', help = "Devicetree binary to walk.")
+parser.add_argument('-D', action = 'append')
+args = parser.parse_args()
+
+genpath = args.fragment_path
+root["___hidden_path"] = "/"
+addChildren(root, args.dtb)
+addProperties(root, args.dtb)
+if args.D is not None:
+	defines = dict([(x.split("=")[0], x.split("=")[1]) for x in args.D])
+else:
+	defines = dict()
+variables = dict()
+epilogues = collections.OrderedDict()
+inits = collections.OrderedDict()
+b4 = os.getcwd()
+os.chdir(genpath)
+try:
+	execfile("dtwalk,init.py")
+except:
+	pass
+os.chdir(b4)
+walkItem(None, root, None, root, None)
+for k in epilogues:
+	epilogues[k]()
+for i in inits:
+	inits[i]["__open"]()
+	for k in inits[i]:
+		if k != "__open" and k != "__close":
+			inits[i][k]()
+	inits[i]["__close"]()

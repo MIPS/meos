@@ -1,0 +1,88 @@
+/dts-v1/;
+
+/memreserve/ 0xbd000000 0x01000000;  // QSPI Flash
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "xilfpga,nexys4ddr", "xilfpga,microAptiv";
+
+	ext: ext {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <50000000>;
+	};
+
+	cpus {
+		cpu@0 {
+			compatible = "mti,mips14KEc", "mti,mips14Kc", "mti,mips", "mti,embedded-cpu";
+			device_type = "cpu";
+			clocks = <&ext>;
+			mti,vmem = <0x80000000 0x00080000>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x08000000>;
+	};
+
+	cpuirq: interrupt-controller {
+		compatible = "mti,cpu-interrupt-controller";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		#address-cells = <0>;
+	};
+
+	xpsirq: xpsirq@10200000 {
+		compatible = "xlnx,xps-intc-1.00.a";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		reg = <0x10200000 0x10000>;
+		xlnx,kind-of-intr = <0x0>;
+		xlnx,num-intr-inputs = <0x6>;
+		interrupt-parent = <&cpuirq>;
+		interrupts = <6>;
+	};
+
+	ttyS0@10400000 {
+		compatible = "ns16550a";
+		reg = <0x10400000 0x10000>;
+		reg-shift = <1>;
+		reg-offset = <0x1000>;
+		interrupt-parent = <&xpsirq>;
+		interrupts = <10>;
+		clock-frequency = <3125000>;
+		status = "okay";
+	};
+
+	en0@10e00000 {
+		compatible = "xlnx,xps-ethernetlite-3.00.a";
+		device_type = "network";
+		interrupt-parent = <&xpsirq>;
+		interrupts = <11>;
+		mac-address = [00 19 F5 FF FF F0];
+		phy-handle = <&phy0>;
+		reg = <0x10e00000 0x10000>;
+		xlnx,duplex = <0x1>;
+		xlnx,include-global-buffers = <0x1>;
+		xlnx,include-internal-loopback = <0x0>;
+		xlnx,include-mdio = <0x1>;
+		xlnx,instance = "axi_ethernetlite_inst";
+		xlnx,rx-ping-pong = <0x1>;
+		xlnx,s-axi-id-width = <0x1>;
+		xlnx,tx-ping-pong = <0x1>;
+		xlnx,use-internal = <0x0>;
+		mdio {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			phy0: phy@1 {
+				compatible = <0x0007c0f0 0xfffffff0>;
+				device_type = "ethernet-phy";
+				interrupt-parent = <&xpsirq>;
+				interrupts = <2>;
+				reg = <1>;
+			};
+		};
+	};
+};

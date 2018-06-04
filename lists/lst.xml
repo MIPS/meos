@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="lists" prefix="LST" modtype="Functional">
+	<description>Provides general purpose functions for manipulating singly-linked lists of
+	objects. <par/>All list-able objects must have a
+	<code>LST_LINK</code> macro entry as their <emph>first</emph> field.<par/>
+	All lists (<code>LST_T</code>) <emph>must</emph> be initialised before use.<par/>
+	If <code>LST_INLINE</code> is defined, then this module can be in-lined rather than separately linked.</description>
+	<imports>debug</imports>
+	<interface>
+		<prologue>
+#ifdef LST_INLINE
+#define LST_FQUALS inline static
+#else
+#ifdef LST_FQUALS
+#undef LSTFQUALS
+#endif
+#define LST_FQUALS
+#endif
+	</prologue>
+	<include lib="N">meos/config.h</include>
+	<include lib="Y">stdint.h</include>
+	<include lib="N">meos/debug/paranoia.h</include>
+		<define><c>LST_LINK LST_LINKAGE_T LST_link</c>Macro for declaring linkage fields in list-able  objects. For example to declare a list-able object:<nl/>
+			<code>struct {<nl/><tab/>LST_LINK;<nl/><tab/>...<nl/>} object;</code></define>
+		<typedef vis="private"><c>struct {<nl/>
+				<parahead/>
+				<tab/>void **first;<nl/>
+			#ifdef CONFIG_DEBUG_PARANOIA<nl/>
+				<tab/>void **spacer;<nl/>
+			#endif<nl/>
+				<paratail/>
+		}LST_LINKAGE_T</c>Private data type used by <code>LST_LINK</code> macro.
+		</typedef>
+		<typedef vis="anonymous"><c>struct {<nl/>
+				<parahead/>
+				<tab/>void **first;<nl/>
+				<tab/>void **last;<nl/>
+				<paratail/>
+		}LST_T</c>
+		List type.
+		</typedef>
+		<func name="LST_add" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((list != NULL) &amp;&amp; (item != NULL))</precondition>
+            </limitations>
+			<description>Add item to tail of list.</description>
+		</func>
+		<func name="LST_addHead" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((list != NULL) &amp;&amp; (item != NULL))</precondition>
+            </limitations>
+			<description>Add item to head of list.</description>
+		</func>
+		<func name="LST_empty" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">List is empty.</item>
+					<item val="0 (FALSE)">List not empty.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(list != NULL)</precondition>
+            </limitations>
+			<description>Test for empty list.</description>
+		</func>
+		<func name="LST_first" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<return type="void *">Pointer to first item or <code>NULL</code>.</return>
+			<limitations>
+            <precondition>(list != NULL)</precondition>
+            </limitations>
+			<description>Returns pointer to the first item in the list <emph>without removing it</emph>.<par/>
+				<code>NULL</code> return indicates an empty list.</description>
+		</func>
+		<func name="LST_init" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(list != NULL)</precondition>
+            </limitations>
+			<description>Initialise a list.</description>
+		</func>
+		<func name="LST_last" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<return type="void *">Pointer to last item or <code>NULL</code>.</return>
+			<limitations>
+            <precondition>(list != NULL)</precondition>
+            </limitations>
+			<description>Returns pointer to the last item in the list <emph>without removing it</emph>.<par/>
+				<code>NULL</code> return indicates an empty list.</description>
+		</func>
+		<func name="LST_next" quals="LST_FQUALS">
+			<arg type="void *" name="item" traceable="Y">Pointer to item.</arg>
+			<return type="void *">Pointer to next item or <code>NULL</code>.</return>
+			<limitations>
+            <precondition>(item != NULL)</precondition>
+            </limitations>
+			<description>Returns pointer to an item's successor (assuming the specified <code>item</code> is contained in a list) <emph>without removing it</emph>.<par/>
+				<code>NULL</code> return indicates no successor.</description>
+		</func>
+		<func name="LST_remove" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<arg type="void *" name="item" traceable="Y">Pointer to item</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((list != NULL) &amp;&amp; (item != NULL))</precondition>
+            </limitations>
+			<description>Remove <code>item </code> from <code>list</code>.<par/>This works for an item positioned anywhere in the list,
+			but may not be very efficient. If you know the item is at the head of the list, <code>LST_removeHead</code>
+			is better.</description>
+		</func>
+		<func name="LST_removeHead" quals="LST_FQUALS">
+			<arg type="LST_T *" name="list" traceable="Y">Pointer to list.</arg>
+			<return type="void *">Removed item or <code>NULL</code>.
+			</return>
+			<limitations>
+            <precondition>(list != NULL)</precondition>
+            </limitations>
+			<description>Remove item from head of list. Returns <code>NULL</code> if list is empty.</description>
+		</func>
+		<epilogue>
+#ifndef MEOS_NO_FUNCS
+#ifdef LST_INLINE
+#define LST_CINCLUDE
+#include "meos/lists/lst.c"
+#endif
+#endif
+</epilogue>
+	</interface>
+</module>

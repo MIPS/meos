@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="doc.xsl"?>
+<manual xmlns:xi="http://www.w3.org/2001/XInclude">
+        <xi:include href="../lists/lst.xml"/>
+        <xi:include href="../dqueues/dq.xml"/>
+        <xi:include href="../trees/tre.xml"/>
+        <xi:include href="../rings/ring.xml"/>
+        <xi:include href="../debug/dbg.xml"/>
+        <xi:include href="../kernel/krn.xml"/>
+        <xi:include href="../irq/irq.xml"/>
+        <xi:include href="../ipm/ipm.xml"/>
+        <xi:include href="../mq/mq.xml"/>
+        <xi:include href="../tmr/tmr.xml"/>
+        <xi:include href="../mem/mem.xml"/>
+        <xi:include href="../ctx/ctx.xml"/>
+</manual>

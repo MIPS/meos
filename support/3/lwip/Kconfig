@@ -1,0 +1,36 @@
+menuconfig LWIP
+bool "lwIP 1.4.1"
+default n
+select IP
+help
+	Build lwIP configured for MEOS, and make it available alongside the MEOS
+	libraries and header files.
+
+if LWIP
+
+config LWIP_SRC
+string "lwIP URL"
+default "http://www.mirrorservice.org/sites/download.savannah.gnu.org/releases/lwip/"
+help
+	URL stem to download lwIP from. Must include trailing /.
+
+
+config LWIP_MAX_THREADS
+int "Maximum number of threads"
+default 4
+help
+	The number of threads lwIP may create. Changes memory requirements.
+
+config LWIP_MAX_STACK
+int "Maximum thread stack size"
+default 2048
+help
+	The number of words of stack per lwIP thread. Changes memory requirements.
+
+config LWIP_MAX_MESSAGES
+int "Maximum number of in-flight messages"
+default 64
+help
+	The number of in-flight mailbox messages lwIP may post. Changes memory requirements.
+
+endif

@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="irq" prefix="IRQ" modtype="Functional">
+	<description>Provides an abstraction of the underlying interrupt
+	hardware.
+	<par/>
+	This functionality supersedes previous MEOS interrupt support.</description>
+	<imports>lists</imports>
+	<interface>
+		<prologue>
+		</prologue>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/target/irq1.h</include>
+		<include lib="N">meos/lists/lst.h</include>
+		<include lib="Y">stddef.h</include>
+		<define vis="virtual"><c>IRQ_SOFTINTS</c>The number of software
+		interrupts available. Implementation specific.</define>
+		<define><c>IRQ_SELF (-1)</c>The current processor.
+		</define>
+		<typedef><c>void IRQ_ISRFUNC_T(int32_t intNum)</c>Installable ISR
+		function. intNum is a core interrupt number.</typedef>
+		<typedef vis="anonymous"><c>int32_t IRQ_IPL_T</c>IPL (interrupt
+		priority) type. The contents of this type should be considered
+		opaque by user code.</typedef>
+		<typedef><c>
+			struct {<nl/>
+				<tab/>LST_LINK;<nl/>
+				<parahead/>
+				<tab/>int32_t intNum;<nl/>
+				<tab/>void *priv;<nl/>
+				<tab/>IRQ_ISRFUNC_T *isrFunc;<nl/>
+				<tab/>IRQ_IMPDESC_T impSpec;<nl/>
+				<paratail/>
+			}IRQ_DESC_T</c>
+			An IRQ descriptor.
+			<par/>
+			<code>intNum</code> is the core interrupt number to
+			trigger, <code>priv</code> is private data for user use,
+			<code>isrFunc</code> is the ISR handler that should be
+			invoked, and <code>impSpec</code> has implementation
+			specific extra data - please see the accompanying
+			documentation for the appropriate interrupt model.
+			<par/>
+			Note that QIO uses <code>priv</code> and as such it will
+			not be available for user use when used in conjunction.
+		</typedef>
+		<func name="IRQ_ack">
+			<arg type="IRQ_DESC_T *" name="irqDesc"  traceable="Y">Interrupt
+			descriptor to acknowledge.</arg>
+			<return type="IRQ_DESC_T *"><code>irqDesc</code></return>
+			<limitations>
+			<precondition>(irqDesc != NULL)</precondition>
+			</limitations>
+			<description>Acknowledges the interrupt described by
+			<code>irqDesc</code> and returns the same descriptor. This is only
+			necessary in certain implementation specific circumstances - please
+			see the accompanying documentation for the appropriate interrupt
+			model.</description>
+		</func>
+		<func name="IRQ_cause">
+			<arg type="int32_t" name="intNum">Core interrupt number.
+			</arg>
+			<return type="IRQ_DESC_T *">Interrupt descriptor that
+			caused <code>intNum</code>.</return>
+			<description>Returns the IRQ descriptor that caused the
+			core interrupt number passed to a
+			<code>IRQ_ISRFUNC_T</code> handler.
+			<par/>
+			This should only be used if necessary, since this may
+			not be a fast operation.</description>
+		</func>
+		<func name="IRQ_find">
+			<arg type="IRQ_DESC_T *" name="irqDesc" traceable="Y">IRQ descriptor.</arg>
+			<return type="IRQ_DESC_T *"/>
+			<limitations>
+			<precondition>(irqDesc != NULL)</precondition>
+			</limitations>
+			<description>Find the installed IRQ descriptor that best matches
+			<code>irqDesc</code>.
+			<par/>
+                        Please see the accompanying documentation for the
+                        appropriate interrupt model for platform specific
+                        details.
+                        <par/>
+                   	In order to properly manipulate the system's interrupt
+                   	enable status, this function itself must be called with
+                   	interrupts <emph>enabled</emph>, i.e., you should only
+                   	use <code>IRQ_find</code> in normal task code, running
+                   	<emph>after</emph> the system has been started with
+                   	<code>KRN_startOS</code>.
+                        </description>
+		</func>
+		<func name="IRQ_ipi">
+			<arg type="int32_t" name="hwThread">Processor to send IPI
+			interrupt to. Specify <code>IRQ_SELF</code> for the current
+			processor.</arg>
+			<arg type="IRQ_DESC_T *" name="out" traceable="Y">IRQ descriptor to
+			fill.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (Success)">Interrupt descriptor filled.</item>
+					<item val="0 (Failure)">Interrupt descriptor invalid.</item>
+				</enum>
+			</return>
+			<limitations>
+			<precondition>(out != NULL)</precondition>
+			</limitations>
+			<description>Fills <code>out</code> with the appropriate
+			interrupt descriptor to synthesize the specified IPI
+			interrupt.</description>
+		</func>
+		<func name="IRQ_raiseIPL" vis="virtual">
+			<voidargs/>
+			<return type="IRQ_IPL_T">Previous IPL.</return>
+			<description>Raises IPL (disables interrupts) in the
+			caller's execution context.
+        		<par/>
+        		Critical regions should be protected by bracketing with
+        		calls in the following manner:
+        		<par/>
+        		<code>oldIPL = IRQ_raiseIPL();<nl/>
+        		... <nl/>
+        		IRQ_restoreIPL(oldIPL);
+        		</code>
+        		<par/>
+        		The IPL should be managed in a strictly nested fashion.
+                        <par/>
+                        It is safe (although unnecessary) to call this function
+                        in ISRs. This makes it possible to write functions which
+                        can execute in both interrupt and background context.
+                        </description>
+		</func>
+		<func name="IRQ_restoreIPL" vis="virtual" quals="">
+			<arg type="IRQ_IPL_T" name="newIPL">New IPL value.</arg>
+			<return type="void"/>
+			<description>Lowers the IPL (enable interrupts) of the
+			caller's execution context.
+			<par/>
+			Critical regions should be protected by bracketing with
+			calls in the following manner:
+                        <par/>
+                        <code>oldIPL = IRQ_raiseIPL();<nl/>
+                        ... <nl/>
+                        IRQ_restoreIPL(oldIPL);</code
+                        ><par/>
+                        The IPL should be managed in a strictly nested fashion.
+                        <par/>
+                        It is safe (although unnecessary) to call this function
+                        in ISRs. This makes it possible to write functions which
+                        can execute in both interrupt and background context.
+</description>
+		</func>
+		<func name="IRQ_route">
+			<arg type="IRQ_DESC_T *" name="irqDesc" traceable="Y">IRQ descriptor
+			from global memory.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(irqDesc != NULL)</precondition>
+			</limitations>
+			<description>Installs the IRQ described by
+			<code>irqDesc</code>.
+			<par/>
+			This function allows you to handle device
+			interrupts directly, rather than by using the device and
+			driver model provided by the QIO system.
+			<par/>
+			<bold>WARNING:</bold> When installing multiple ISRs on the same core
+			IRQ, typically only the last handler will be invoked. It is better
+			to use the same ISR function, and use <code>IRQ_cause</code> to
+			demultiplex the interrupt.
+			<par/>
+            Please see the accompanying documentation for the
+            appropriate interrupt model for platform specific
+            details and restrictions, e.g. vectoring, trigger modes, etc.
+            <par/>
+            <code>irqDesc</code> must <emph>not</emph> be allocated
+            from the stack, but instead from global memory. To
+            remove a handler, you can call this function with a
+            descriptor containing a <code>NULL</code> handler. This
+            will both remove the handler and disable the
+            corresponding interrupt, but will not undo any
+            implementation specific mapping.
+            <par/>
+            MEOS does not provide a means to selectively disable
+            user supplied interrupt handlers. To protect short
+            critical regions, you should just use the global
+            interrupt management functions
+            <code>IRQ_raiseIPL</code> and
+            <code>IRQ_restoreIPL</code>. If it is needed to
+            selectively disable and re-enable a particular ISR this
+            function should be used to uninstall and, later,
+            reinstall the handler.
+            <par/>
+            Unlike using a QIO device driver, if you choose to
+            handle device interrupts directly, you must explicitly
+            perform any necessary hardware interrupt acknowledgement
+            in your ISR. See <code>IRQ_ack</code>.
+            <par/>
+            Take care to keep ISRs short and non-blocking. Most MEOS
+            kernel functions are designed for use in background mode
+            only - they must not be used inside ISRs. The
+            descriptions of those functions which <emph>can</emph>
+            be used in ISRs state this explicitly.
+            <par/>
+           	In order to properly manipulate the system's interrupt
+           	enable status, this function itself must be called with
+           	interrupts <emph>enabled</emph>, i.e., you should only
+           	use <code>IRQ_route</code> in normal task code, running
+           	<emph>after</emph> the system has been started with
+           	<code>KRN_startOS</code>.
+            </description>
+		</func>
+		<func name="IRQ_soft">
+			<arg type="int32_t" name="index">Soft interrupt index,
+			between 1 and <code>IRQ_SOFTINTS</code>.</arg>
+			<arg type="IRQ_DESC_T *" name="out" traceable="Y">IRQ descriptor to
+			fill.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (Success)">Interrupt descriptor filled.</item>
+					<item val="0 (Failure)">Interrupt descriptor invalid.</item>
+				</enum>
+			</return>
+			<limitations>
+			<precondition>((index &gt;= 0) &amp;&amp; (index &lt;= IRQ_SOFTINTS) &amp;&amp; (out != NULL))</precondition>
+			</limitations>
+			<description>Fills <code>out</code> with the appropriate
+			interrupt descriptor to synthesize the specified soft
+			interrupt.</description>
+		</func>
+		<func name="IRQ_synthesize">
+			<arg type="IRQ_DESC_T *" name="irqDesc" traceable="Y">Interrupt
+			descriptor to synthesize.</arg>
+			<return type="void"/>
+			<limitations>
+			<precondition>(irqDesc != NULL)</precondition>
+			</limitations>
+			<description>Synthesizes an interrupt. At a minimum,
+			interrupts returned by <code>IRQ_soft</code> may be
+			synthesized. Please see the accompanying documentation
+			for the appropriate interrupt model for any additional
+			interrupts that may be synthesized.</description>
+		</func>
+		<func name="IRQ_init" vis="private">
+			<arg type="uint32_t *" name="intStack">Memory buffer
+			to use as stack during interrupts.</arg>
+			<arg type="size_t" name="issize">Size of <code>intStack
+			</code> in 32-bit words.</arg>
+			<return type="void"/>
+			<description>Implementation specific initialisation
+			function. This <emph>must not</emph> be called by user
+			code.
+			<par/>
+			Typically this will initialise the interrupt stack,
+			but not install handlers. See <code>IRQ_install()</code>.
+			</description>
+		</func>
+		<func name="IRQ_install" vis="private">
+			<voidargs/>
+			<return type="void"/>
+			<description>Implementation specific installation
+			function. This <emph>must not</emph> be called by user
+			code.
+			<par/>
+			Typically this will install interrupt handlers to a
+			known good manipulable state, leaving most interrupts
+			disabled.</description>
+		</func>
+		<epilogue>
+		</epilogue>
+		<postinclude lib="N">meos/target/irq2.h</postinclude>
+	</interface>
+</module>

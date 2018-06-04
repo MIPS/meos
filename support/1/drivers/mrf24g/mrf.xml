@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="mrf" prefix="MRF" modtype="Special">
+	<description>MRF24WG driver</description>
+	<interface>
+		<include lib="N">MEOS.h</include>
+		<include lib="N">meos/mrf24g/mrf_connection.h</include>
+		<include lib="N">meos/mrf24g/mrf_raw.h</include>
+		<include lib="N">meos/mrf24g/mrf_const.h</include>
+    <typedef><c>void (*MRF_IPCB_T)(void *arg) </c>Input callback type</typedef>
+		<func name="MRF_idle">
+			<return type="int"/>
+			<description>Checks the interrupt pin and handles input.
+			</description>
+		</func>
+    <func name="MRF_get_interrupt">
+      <arg type="enum MRF_interrupt_types" name="type" traceable="Y">Interrupt to read</arg>
+      <return type="int"/>
+      <description>Reads the interrupt registers and returns 1 if the specified
+        interrupt is set, 0 otherwise. Also clears the bit in the register.
+      </description>
+    </func>
+    <func name="MRF_rx_read">
+      <arg type="uint8_t* const" name="buf" traceable="Y">Buffer to read into</arg>
+      <arg type="const size_t" name="offset" traceable="Y">Offset into the RAW buffer</arg>
+      <arg type="const size_t" name="size" traceable="Y">Size of read</arg>
+      <return type="int"/>
+      <description>Performs a read from the RAW data rx into the buffer <code>buf</code>.
+      </description>
+    </func>
+    <func name="MRF_tx_write">
+      <arg type="const uint8_t* const" name="buf" traceable="Y">Buffer to read from</arg>
+      <arg type="const size_t" name="offset" traceable="Y">Offset into the RAW buffer</arg>
+      <arg type="const size_t" name="size" traceable="Y">Size of write</arg>
+      <return type="int"/>
+      <description>Performs a write into the RAW data rx from the buffer <code>buf</code>.
+      </description>
+    </func>
+    <func name="MRF_init">
+      <arg type="MRF_IPCB_T" name="_input_cb" traceable="Y">Input_callback, called from the idle function</arg>
+      <arg type="void *" name="_input_cb_arg" traceable="Y">Argument passed to the input callback</arg>
+      <return type="int"/>
+      <description>Initialises the MRF module
+      </description>
+    </func>
+    </interface>
+</module>

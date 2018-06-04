@@ -1,0 +1,147 @@
+/dts-v1/;
+
+/memreserve/ 0x00000000 0x00001000;	// reserved
+/memreserve/ 0x00001000 0x000ef000;	// ROM data
+/memreserve/ 0x000f0000 0x004cc000;	// reserved
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "mti,sead-3";
+	interrupt-parent = <&cpuirq>;
+
+	clocks {
+		GL_LV_CLK0: GL_LV_CLK0 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <66000000>;
+		};
+		GL_A3_LV_CLK0: GL_A3_LV_CLK0 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <66000000>;
+		};
+		GL_LV_CLK1: GL_LV_CLK1 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <40000000>;
+		};
+		GL_A3_LV_CLK1: GL_A3_LV_CLK1 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <40000000>;
+		};
+		PIC_CLK_20MHZ: PIC_CLK_20MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <20000000>;
+		};
+		USBPHY_CLK_24MHZ: USBPHY_CLK_24MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
+		USB_CLK_24MHZ: USB_CLK_24MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
+		ETH_CLK_25MHZ: ETH_CLK_25MHZ {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <25000000>;
+		};
+		GL_CLK_24_576: GL_CLK_24_576 {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24576000>;
+		};
+		GL_LV_CLK_P: GL_LV_CLK_P {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <200000000>;
+		};
+		GL_LV_CLK_N: GL_LV_CLK_N {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <200000000>;
+		};
+		CP0_CLK: CP0_CLK {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <33000000>;
+		};
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		cpu@0 {
+			compatible = "mti,mips14KEc", "mti,mips14Kc", "mti,mips", "mti,embedded-cpu";
+			reg = <0 0>;
+			mti,vmem = <0x80000000 0x7a6000>;
+			clocks = <&GL_LV_CLK0>;
+		};
+	};
+
+
+	drives {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ramdisk@0 {
+			compatible = "mti,ram-disk";
+			reg = <0x7a6000 0x5a000>;
+			mti,vmem = <0x807a6000 0x5a000>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0x08000000>;
+	};
+
+	cpuirq: interrupt-controller {
+		compatible = "mti,cpu-interrupt-controller";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		#address-cells = <0>;
+	};
+
+	uarts {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		usbuart@1f000800 {
+			compatible = "ns16550a";
+			reg = <0x1f000800 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <14745600>;
+			interrupts = <4>;
+		};
+		ttyS0@1f000900 {
+			compatible = "ns16550a";
+			reg = <0x1f000900 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <14745600>;
+			interrupts = <4>;
+		};
+		fdc@0 {
+			compatible = "mti,fdc";
+			reg = <0 0>;
+			channel = <2>;
+		};
+	};
+
+	net {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		en0@1f010000 {
+			compatible = "smsc,lan9211", "smsc,lan9115";
+			reg = <0x1f010000 0x2000000>;
+			phy-mode = "mii";
+			interrupts = <6>;
+			reg-io-width = <4>;
+			mac-address = <0x02 0x19 0xf5 0x09 0x00 0x12>;
+			smsc,irq-push-pull;
+		};
+	};
+};

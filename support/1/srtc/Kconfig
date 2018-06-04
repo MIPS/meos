@@ -1,0 +1,6 @@
+config SRTC
+bool "Software Real Time Clock"
+select LOPRI if SNTP
+default n
+help
+	Build a Software Real Time Clock.

@@ -1,0 +1,6 @@
+config DRIVER_XPSETHLITE
+depends on LWIP
+depends on ARCH_MIPS_BASELINE_XPSINTC
+bool "Xilinx XPS Ethernet Lite"
+help
+	Driver for the ethernet on the MIPS NEXYS4DDR FPGA system.

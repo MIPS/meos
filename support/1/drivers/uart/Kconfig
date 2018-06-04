@@ -1,0 +1,4 @@
+config DRIVER_UART
+bool
+help
+	UART framework.

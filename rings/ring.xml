@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../doc/doc.xsl"?>
+<module name="rings" prefix="RING" modtype="Functional">
+	<description>Provides general purpose functions for manipulating byte
+	oriented ring buffers.<par/>
+	All rings (<code>RING_T</code>) <emph>must</emph> be initialised before use.<par/>
+	If <code>RING_INLINE</code> is defined, then this module can be in-lined rather than separately linked.</description>
+	<imports>debug</imports>
+	<interface>
+		<prologue>
+#ifdef RING_INLINE
+#define RING_FQUALS inline static
+#else
+#ifdef RING_FQUALS
+#undef RING_FQUALS
+#endif
+#define RING_FQUALS
+#endif
+	</prologue>
+	<include lib="N">meos/config.h</include>
+	<include lib="Y">stdint.h</include>
+	<include lib="N">meos/debug/paranoia.h</include>
+	<include lib="N">meos/kernel/krn.h</include>
+		<typedef vis="anonymous"><c>struct {<nl/>
+				<parahead/>
+				<tab/>uint8_t *buffer;<nl/>
+				<tab/>size_t size;<nl/>
+				<tab/>size_t head;<nl/>
+				<tab/>size_t tail;<nl/>
+				<tab/>KRN_TASKQ_T rq;<nl/>
+				<tab/>KRN_TASKQ_T wq;<nl/>
+				<paratail/>
+		}RING_T</c>
+		Ring type.
+		</typedef>
+		<func name="RING_empty" quals="RING_FQUALS">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Ring is empty.</item>
+					<item val="0 (FALSE)">Ring not empty.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(ring != NULL)</precondition>
+            </limitations>
+			<description>Test for empty ring.</description>
+		</func>
+		<func name="RING_full" quals="RING_FQUALS">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Ring is full.</item>
+					<item val="0 (FALSE)">Ring not full.</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>(ring != NULL)</precondition>
+            </limitations>
+			<description>Test for full ring.</description>
+		</func>
+		<func name="RING_init" quals="RING_FQUALS">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<arg type="uint8_t *" name="buffer" traceable="N">Pointer to buffer memory.</arg>
+			<arg type="size_t" name="size" traceable="N">Pointer to size of buffer.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((ring != NULL) &amp;&amp; (buffer != NULL) &amp;&amp; (size > 0))</precondition>
+            </limitations>
+			<description>Initialise a ring, using a memory of <code>size</code> bytes at <code>buffer</code>.</description>
+		</func>
+		<func name="RING_read" quals="RING_FQUALS">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<arg type="uint8_t *" name="byte">Pointer to read byte into.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in scheduler clock ticks).</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Byte read.</item>
+					<item val="0 (FALSE)">Read failed.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(ring != NULL)</precondition>
+			</limitations>
+			<description>
+				Tries to read a byte from <code>ring</code> into <code>byte</code>.<par/>
+				If <code>timeout</code> is negative, then the function
+				will always succeed and return <code>non-zero</code>. If
+				necessary, the caller will block until the there is a byte to
+				read. If <code>timeout</code> is positive, then the caller will
+				block for a maximum of <code>timeout</code> scheduler
+				clock ticks before returning. A <code>zero</code> return
+				indicates that the read could not succeed  before the
+				timeout expired. In the special case of a zero
+				<code>timeout</code> value, the function will return
+				immediately without blocking: the return value will be
+				<code>negative</code> unless the read can succeed
+				immediately.</description>
+		</func>
+		<func name="RING_readBuffer" quals="RING_FQUALS">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<arg type="uint8_t *" name="data">Pointer to read bytes into.</arg>
+			<arg type="size_t" name="length">Number of bytes to read.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in scheduler clock ticks).</arg>
+			<return type="int32_t">Number of bytes read.</return>
+			<limitations>
+				<precondition>((ring != NULL) &amp;&amp; (data != NULL))</precondition>
+			</limitations>
+			<description>
+				Tries to read <code>length</code> bytes from <code>ring</code>
+				into <code>data</code>. Will perform a partial read if
+				insufficient data is available.<par/>
+				If <code>timeout</code> is negative, then the function
+				will always succeed and return non-zero. If
+				necessary, the caller will block until the there is data to
+				read. If <code>timeout</code> is positive, then the caller will
+				block for a maximum of <code>timeout</code> scheduler
+				clock ticks before returning. A <code>zero</code> return
+				indicates that the read could not succeed  before the
+				timeout expired. In the special case of a zero
+				<code>timeout</code> value, the function will return
+				immediately without blocking: the return value will be
+				<code>negative</code> unless the read can succeed
+				immediately.</description>
+		</func>
+				<func name="RING_size" vis="virtual">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<return type="int32_t">Number of bytes in ring.</return>
+			<limitations>
+            <precondition>(ring != NULL)</precondition>
+            </limitations>
+			<description>Return the total number of bytes in <code>ring</code>.</description>
+		</func>
+		<func name="RING_space">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<return type="int32_t">Number of empty bytes in ring.</return>
+			<limitations>
+				<precondition>(ring != NULL)</precondition>
+			</limitations>
+			<description>Return the number of empty bytes in <code>ring</code>.</description>
+		</func>
+		<func name="RING_used" >
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<return type="int32_t">Number of used bytes in ring.</return>
+			<limitations>
+				<precondition>(ring != NULL)</precondition>
+			</limitations>
+			<description>Return the number of used bytes in <code>ring</code>.</description>
+		</func>
+		<func name="RING_write" quals="RING_FQUALS">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<arg type="uint8_t" name="byte">Byte to write.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in scheduler clock ticks).</arg>
+			<return type="int32_t">
+				<enum>
+					<item val="Non-zero (TRUE)">Byte written.</item>
+					<item val="0 (FALSE)">Write failed.</item>
+				</enum>
+			</return>
+			<limitations>
+				<precondition>(ring != NULL)</precondition>
+			</limitations>
+			<description>
+				Tries to write a byte to <code>ring</code>.<par/>
+				If <code>timeout</code> is negative, then the function
+				will always succeed and return <code>non-zero</code>. If
+				necessary, the caller will block until the there is a space to
+				write into. If <code>timeout</code> is positive, then the caller
+				will block for a maximum of <code>timeout</code> scheduler
+				clock ticks before returning. A <code>zero</code> return
+				indicates that the write could not succeed  before the
+				timeout expired. In the special case of a zero
+				<code>timeout</code> value, the function will return
+				immediately without blocking: the return value will be
+				<code>negative</code> unless the write can succeed
+				immediately.</description>
+		</func>
+		<func name="RING_writeBuffer" quals="RING_FQUALS">
+			<arg type="RING_T *" name="ring" traceable="Y">Pointer to ring.</arg>
+			<arg type="uint8_t *" name="data">Bytes to write.</arg>
+			<arg type="size_t" name="length">Number of bytes to write.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in scheduler clock ticks).</arg>
+			<return type="int32_t">Number of bytes written.</return>
+			<limitations>
+				<precondition>(ring != NULL)</precondition>
+			</limitations>
+			<description>
+				Tries to write <code>length</code> bytes to <code>ring</code>. Will perform a partial write if
+				insufficient space is available.<par/>
+				If <code>timeout</code> is negative, then the function
+				will always succeed and return <code>non-zero</code>. If
+				necessary, the caller will block until the there is a space to
+				write into. If <code>timeout</code> is positive, then the caller
+				will block for a maximum of <code>timeout</code> scheduler
+				clock ticks before returning. A <code>zero</code> return
+				indicates that the write could not succeed  before the
+				timeout expired. In the special case of a zero
+				<code>timeout</code> value, the function will return
+				immediately without blocking: the return value will be
+				<code>negative</code> unless the write can succeed
+				immediately.</description>
+		</func>
+		<epilogue>
+#define RING_size(R) ((R)->size)
+
+#ifndef MEOS_NO_FUNCS
+#ifdef RING_INLINE
+#define RING_CINCLUDE
+#include "meos/rings/ring.c"
+#endif
+#endif
+</epilogue>
+	</interface>
+</module>

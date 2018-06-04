@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../../doc/doc.xsl"?>
+<module name="dwethgmac" prefix="DWETHGMAC" modtype="Special">
+	<description>DesignWare Ethernet GMAC LWIP driver</description>
+	<imports>kernel</imports>
+	<imports>lwip</imports>
+	<interface>
+		<include lib="Y">stdio.h</include>
+		<include lib="N">meos/config.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<include lib="N">lwip/netif.h</include>
+		<typedef vis="private"><c>struct DWETHGMAC_tag DWETHGMAC_T</c>(Incomplete) DWETHGMAC system object definition.</typedef>
+		<func name="DWETHGMAC_dtInit">
+			<arg type="DWETHGMAC_T *" name="dwethgmac" traceable="Y">Pointer to DWETHGMAC system object.</arg>
+			<arg type="IRQ_DESC_T *" name="irq">IRQ descriptor for specified DWETHGMAC.</arg>
+			<return type="void"/>
+			<limitations>
+				<precondition>((dwethgmac != NULL) &amp;&amp; (irq != NULL))</precondition>
+			</limitations>
+			<description>Initialises the DWETHGMAC described by <code>dwethgmac</code> based on the provided configuration.
+			</description>
+		</func>
+		<epilogue>
+typedef uint32_t DWETHGMAC_DMADESC_T[4];
+
+/* complete the DWETHGMAC_T definition... */
+struct DWETHGMAC_tag {
+	uintptr_t	pAddr;
+	uint8_t*	regs;
+	uint8_t mac[6];
+	KRN_TIMER_T phyTimer;
+	uint8_t rxBuf[CONFIG_DRIVER_DWETHGMAC_NUM_DESCS][2048] __attribute__ ((aligned (32)));
+	uint8_t txBuf[CONFIG_DRIVER_DWETHGMAC_NUM_DESCS][2048] __attribute__ ((aligned (32)));
+	uint32_t txReset0;
+	uint32_t txReset1;
+	DWETHGMAC_DMADESC_T txDesc[CONFIG_DRIVER_DWETHGMAC_NUM_DESCS] __attribute__ ((aligned (32)));
+	uint32_t txi __attribute__ ((aligned (32)));
+	DWETHGMAC_DMADESC_T rxDesc[CONFIG_DRIVER_DWETHGMAC_NUM_DESCS] __attribute__ ((aligned (32)));
+	struct netif netif __attribute__ ((aligned (32)));
+};
+		</epilogue>
+	</interface>
+</module>

@@ -1,0 +1,4 @@
+config BSP_NONE
+bool "None"
+help
+	Generate an empty board support package.

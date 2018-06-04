@@ -1,0 +1,20 @@
+menuconfig DRIVER_NS16550A
+bool "NS 16550A"
+default Y
+select DRIVER_UART
+help
+	Driver for the NS16550A UART and compatible devices.
+
+config DRIVER_NS16550A_TX_BUFFER
+int "Default Tx buffer size"
+default 128
+depends on DRIVER_NS16550A
+help
+	Default transmission buffer size. May be overridden by initialisation.
+
+config DRIVER_NS16550A_RX_BUFFER
+int "Default Rx buffer size"
+default 128
+depends on DRIVER_NS16550A
+help
+	Default transmission buffer size. May be overridden by initialisation.

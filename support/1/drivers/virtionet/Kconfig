@@ -1,0 +1,5 @@
+config DRIVER_VIRTIO_NET
+depends on LWIP
+bool "Virtio network"
+help
+	Virtio network driver.

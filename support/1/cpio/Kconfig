@@ -1,0 +1,6 @@
+config CPIO
+bool "CPIO Filesystem"
+depends on MASS
+default n
+help
+	A simple read only filesystem based on CPIO.

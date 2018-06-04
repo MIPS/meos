@@ -1,0 +1,11 @@
+mainmenu "Project configuration"
+
+config WORK_DIR
+	string
+	option env="WORK_DIR"
+
+config SPEC_CFG
+	string
+	option env="SPEC_CFG"
+
+source "$SPEC_CFG"

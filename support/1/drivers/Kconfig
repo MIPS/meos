@@ -1,0 +1,20 @@
+menu "Drivers"
+
+menu "UART"
+source "$WORK_DIR/support/1/drivers/uart/Kconfig"
+source "$WORK_DIR/support/1/drivers/fdc/Kconfig"
+source "$WORK_DIR/support/1/drivers/ns16550a/Kconfig"
+source "$WORK_DIR/support/1/drivers/pic32uart/Kconfig"
+source "$WORK_DIR/support/1/drivers/tcpsocket/Kconfig"
+source "$WORK_DIR/support/1/drivers/virtioconsole/Kconfig"
+endmenu
+
+menu "Ethernet"
+source "$WORK_DIR/support/1/drivers/lan9211/Kconfig"
+source "$WORK_DIR/support/1/drivers/mrf24g/Kconfig"
+source "$WORK_DIR/support/1/drivers/virtionet/Kconfig"
+source "$WORK_DIR/support/1/drivers/xpsethlite/Kconfig"
+source "$WORK_DIR/support/1/drivers/dwethgmac/Kconfig"
+endmenu
+
+endmenu

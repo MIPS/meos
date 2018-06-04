@@ -1,0 +1,4 @@
+config BSP_RPU_SIM
+bool "RPU simulator"
+help
+	Target an RPU simulator.

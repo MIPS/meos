@@ -1,0 +1,26 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "mti,none";
+
+	ext: ext {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <330000000>;
+	};
+
+	cpus {
+		cpu@0 {
+			compatible = "mti,mips", "mti,embedded-cpu";
+			clocks = <&ext>;
+			mti,vmem = <0x80000000 0xc0000>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x0 0xc0000>;
+	};
+};

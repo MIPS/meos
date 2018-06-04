@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module SYSTEM "../../../doc/module.dtd">
+<?xml-stylesheet type="text/xsl" href="../../../doc/doc.xsl"?>
+<module name="qio" prefix="QIO" modtype="System">
+	<description>Implements an operation queue based model for interrupt
+		driven I/O using the standard kernel.
+	</description>
+	<imports>debug</imports>
+	<imports>dqueues</imports>
+	<imports>kernel</imports>
+	<imports>lists</imports>
+	<interface>
+		<include lib="N">meos/config.h</include>
+		<include lib="Y">stdint.h</include>
+		<include lib="N">meos/debug/dbg.h</include>
+		<include lib="N">meos/lists/lst.h</include>
+		<include lib="N">meos/dqueues/dq.h</include>
+		<include lib="N">meos/kernel/krn.h</include>
+		<typedef vis="anonymous">
+			<c>struct QIO_sysTag QIO_SYS_T</c>Obsolete QIO system object.
+			Do not use.
+		</typedef>
+		<typedef>
+			<c>enum {<nl/>
+				<tab/>QIO_POWERNONE,<nl/>
+				<tab/>QIO_POWERCOARSE,<nl/>
+				<tab/>QIO_POWERFINE<nl/>
+			} QIO_DEVPOWER_T</c>Device Power management model
+		</typedef>
+		<typedef>
+			<c>enum {<nl/>
+				<tab/>QIO_NORMAL=0,<nl/>
+				<tab/>QIO_CANCEL=1,<nl/>
+				<tab/>QIO_TIMEOUT=2<nl/>
+			} QIO_STATUS_T</c>QIO completion status. Don't change
+			the values - it's important that they match those
+			in <code>QIO_STATE_T</code>.</typedef>
+		<typedef>
+			<c>enum {<nl/>
+				<tab/>QIO_IOCOMPLETE=0,<nl/>
+				<tab/>QIO_IOCANCELLED=1, <nl/>
+				<tab/>QIO_IOTIMEOUT=2, <nl/>
+				<tab/>QIO_IOPENDING=3, <nl/>
+				<tab/>QIO_IOACTIVE=4,<nl/>
+             } QIO_STATE_T</c>IO state type. Don't change the values - it's
+             important that they match those in <code>QIO_STATUS_T</code>.
+     		</typedef>
+		<typedef>
+			<c>enum {<nl/>
+				<tab/>QIO_POWERNORMAL,<nl/>
+				<tab/>QIO_POWERSAVE,<nl/>
+				<tab/>QIO_POWERUNKNOWN<nl/>
+			} QIO_POWERCMD_T</c>Power control commands.</typedef>
+		<typedef>
+			<c>struct {<nl/>
+				<tab/>uint32_t opcode;<nl/>
+				<tab/>void *pointer;<nl/>
+				<tab/>uint32_t counter;<nl/>
+				<tab/>void *spare;<nl/>
+			} QIO_IOPARS_T</c>Structure for passing device specific
+			parameters to driver functions. Field names indicate
+			conventional use, but driver authors are free to use the
+			fields for any purpose.
+		</typedef>
+		<typedef vis="anonymous">
+			<c>struct QIO_devTag QIO_DEVICE_T</c>(Incomplete) device
+			 type definition</typedef>
+		<typedef vis="private">
+			<c>void QIO_ISRFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev<nl/>
+				)</c>Device ISR function. This is normally
+			considered private since QIO <emph>users</emph> don't
+			need to know about it. However, device <emph>driver
+			authors</emph> do need to be aware of it.</typedef>
+		<typedef vis="private">
+			<c>void QIO_INITFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev,<nl/>
+				<tab/>QIO_DEVPOWER_T *pwrClass,<nl/>
+				<tab/>int32_t *devRank<nl/>
+			)</c>Device initialisation function. This is normally
+			considered private since QIO <emph>users</emph> don't
+			need to know about it. However, device <emph>driver
+			authors</emph> do need to be aware of it.</typedef>
+		<typedef vis="private">
+			<c>void QIO_STARTFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev,<nl/>
+				<tab/>QIO_IOPARS_T *ioPars<nl/>
+				)</c>Device operation start function.
+			This is normally considered private since QIO
+			<emph>users</emph> don't need to know about it. However,
+			device <emph>driver authors</emph> do need to be aware
+			of it.</typedef>
+		<typedef vis="private">
+			<c>void QIO_CANCELFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev<nl/>
+				)</c>Device cancel function - cancels all active
+			operations. This is normally considered private since
+			QIO <emph>users</emph> don't need to know about it.
+			However, device <emph>driver authors</emph> do need to
+			be aware of it.</typedef>
+		<typedef vis="private">
+			<c>void QIO_POWERFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev,<nl/>
+				<tab/>QIO_POWERCMD_T cmd<nl/>
+				)</c>Device power control function.
+			This is normally considered private since QIO
+			<emph>users</emph> don't need to know about it. However,
+			device <emph>driver authors</emph> do need to be aware
+			of it.</typedef>
+		<typedef vis="private">
+			<c>void QIO_SHUTFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev<nl/>
+			)</c>Device shutdown function.
+			This is normally considered private since QIO
+			<emph>users</emph> don't need to know about it. However,
+			device <emph>driver authors</emph> do need to be aware
+			of it.</typedef>
+		<typedef vis="private">
+			<c>void QIO_SIMFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev,<nl/>
+				<tab/>uint32_t start<nl/>
+				)</c>Device simulation start/stop function.
+			This is normally considered private since QIO
+			<emph>users</emph> don't need to know about it. However,
+			device <emph>driver authors</emph> do need to be aware
+			of it.</typedef>
+		<typedef vis="anonymous">
+			<c>struct {<nl/>
+				<tab/>QIO_ISRFUNC_T *isrFunc;<nl/>
+				<tab/>QIO_INITFUNC_T *initFunc;<nl/>
+				<tab/>QIO_STARTFUNC_T *startFunc;<nl/>
+				<tab/>QIO_CANCELFUNC_T *cancelFunc;<nl/>
+				<tab/>QIO_POWERFUNC_T *powerFunc;<nl/>
+				<tab/>QIO_SIMFUNC_T *simFunc;<nl/>
+				<tab/>QIO_SHUTFUNC_T *shutFunc;<nl/>
+			} QIO_DRIVER_T</c>Type for device driver objects. This
+			is normally considered anonymous since QIO
+			<emph>users</emph> don't need to know about its
+			structure. However, device <emph>driver authors</emph>
+ 			do need to be aware of it.</typedef>
+		<typedef vis="anonymous">
+			<c>struct  QIO_iocbTag QIO_IOCB_T</c>(Incomplete) I/O
+			control block. <code>QIO_IOCB_T</code> s are pool-able.
+		</typedef>
+		<typedef vis="public">
+			<c>int32_t QIO_COMPFUNC_T(<nl/>
+				<tab/>QIO_DEVICE_T *dev,<nl/>
+				<tab/>QIO_IOCB_T *iocb,<nl/>
+				<tab/>QIO_IOPARS_T *iopars,<nl/>
+				<tab/>QIO_STATUS_T status)</c>
+			Type for user-supplied QIO completion function.
+		</typedef>
+		<func name="QIO_cancel">
+			<arg type="QIO_IOCB_T *" name="iocb" traceable="Y">Pointer to I/O
+				Control Block for operation to cancel.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(iocb != NULL)</precondition>
+            </limitations>
+			<description>Cancels the I/O operation indicated by the
+			<code>iocb</code> argument.
+			<par/>
+			If the operation has already completed, then this
+			function will have no effect.
+			<par/>
+			If the operation has been started, then it will only be
+			cancelled if the device has rank 1 <emph>and</emph>
+			supports cancellation of active operations.
+			<par/>
+			On multi-rank devices, cancellation of individual active
+			operations  is not possible. A multi-rank device's
+			<code>cancel</code> function (if any) will only be
+			invoked by <code>QIO_cancelAll</code>
+			<par/>
+			Regardless of what actually happens, the effect is
+			signaled to the operation's "consumer" through the
+			<code>status</code> argument of <code>QIO_result</code>.
+			</description>
+		</func>
+		<func name="QIO_cancelAll">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(dev != NULL)</precondition>
+            </limitations>
+			<description>Cancels all I/O operations queued on the
+			device indicated by <code>dev</code>.
+			<par/>
+			Cancellation behaviour is subject to the same
+			considerations listed in the description of
+			<code>QIO_cancel</code>
+			</description>
+		</func>
+		<func name="QIO_complete">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+			object.</arg>
+			<arg type="QIO_STATE_T" name="iostate">IO state after
+			operation completes.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((dev != NULL) &amp;&amp; (iostate &gt;= QIO_IOCOMPLETE) &amp;&amp; (iostate &lt;= QIO_IOACTIVE))</precondition>
+            </limitations>
+			<description>This function is used internally by the
+			<code>QIO</code> module and in custom device driver
+			ISRs. It is called at device IPL to indicate to the QIO
+			system that a logical I/O operation has completed.
+			<par/>
+			Custom device drivers may call this function from an ISR
+			or from a QIO_STARTFUNC_T handler to signify immediate
+			completion. In these cases the <code>iostate</code>
+			argument <emph>must</emph> be given as
+			<code>QIO_IOCOMPLETE</code>. Other values are reserved
+			for use internally within the QIO module (for handling
+			cancellation and timeouts).
+			<par/>
+			Most device drivers use the default ISR (which calls
+			<code>QIO_complete</code> and <code>QIO_start</code> for
+			you) so you won't often need to use this function.
+			</description>
+		</func>
+		<func name="QIO_devName">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<return type="const char *">Pointer to device name
+				string</return>
+			<limitations>
+            <precondition>(dev != NULL)</precondition>
+            <postcondition>(_RESULT != NULL)</postcondition>
+            </limitations>
+			<description>Provides a pointer to the device name
+			string. If the device does not have a name, a pointer to
+			the string <code>"Unnamed device"</code> is returned.
+			</description>
+		</func>
+		<func name="QIO_disable">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(dev != NULL)</precondition>
+            </limitations>
+			<description>Disables the specified device.
+			<par/>
+			When an active device is disabled, active and pending
+			operations are cancelled (using <code>QIO_cancelAll
+			</code> and the device is put into its low power standby
+			state (if it supports power management). If active
+			operations can not be cancelled, then the device will
+			not be put into its low power state until after the
+			active operations complete. In such cases it is possible
+			(and permissible) to re-enable the device while it is
+			still active.
+			<par/>
+			Once disabled, any new operations queued on the device
+			are immediately cancelled.
+			<par/>
+			Devices may only be enabled/disabled after they have
+			been initialised and the scheduler has been started.
+			<par/>
+			Devices are initially <emph>disabled</emph> following
+			initialisation.</description>
+		</func>
+		<func name="QIO_enable">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(dev != NULL)</precondition>
+            </limitations>
+			<description>Enables the specified device.
+			<par/>
+			Prior to enabling, any operations queued on the device
+			are immediately cancelled.
+			<par/>
+			Devices may only be enabled/disabled after they have
+			been initialised and the scheduler has been started.
+			<par/>
+			Devices are initially <emph>disabled</emph> following
+			initialisation.</description>
+		</func>
+		<func name="QIO_init">
+			<arg type="QIO_DEVICE_T *" name="device" traceable="Y">Pointer to
+				device object.</arg>
+			<arg type="const char *" name="devName">Pointer to
+				device name string or <code>NULL</code>.</arg>
+			<arg type="uint32_t" name="id">Device identification
+				parameter.</arg>
+			<arg type="QIO_DRIVER_T const *" name="driver" traceable="Y">Pointer
+				to device driver.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((device != NULL) &amp;&amp; (driver != NULL))</precondition>
+            </limitations>
+			<description>Initialise a device.
+			<par/>
+			Device initialisation binds the device driver code to
+			the <code>device</code> object and sets up the necessary
+			interrupt vectors.
+			<par/>
+			The device <code>id</code> parameter is available to the
+			driver functions. Its interpretation depends on the
+			device. This parameter is most often used to distinguish
+			between multiple instances of devices which share the
+			same driver software.
+			<par/>
+			Devices should be not be initialised until after the OS
+			has been started (<code>KRN_startOS</code>).
+			</description>
+		</func>
+		<func name="QIO_qio">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<arg type="QIO_IOCB_T *" name="iocb" traceable="Y">Pointer to I/O
+				Control Block object.</arg>
+			<arg type="QIO_IOPARS_T *" name="iopars" traceable="Y">Pointer to
+				device-specific I/O parameter block.</arg>
+			<arg type="KRN_MAILBOX_T *" name="outMbox" traceable="Y">Pointer to
+				result mailbox.</arg>
+			<arg type="QIO_COMPFUNC_T *" name="compFunc">Pointer to
+			completion function (or <code>NULL</code>).</arg>
+			<arg type="int32_t" name="timeout">Timeout (in scheduler
+				clock ticks).</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>((dev != NULL) &amp;&amp; (iocb != NULL) &amp;&amp; (iopars != NULL))</precondition>
+            </limitations>
+			<description>Queues an operation on the specified
+			device.
+			<par/>
+			Details of the operation are loaded into the (caller
+			provided) I/O Control Block (IOCB) and then queued on the
+			device. When the operation completes (be it normal
+			completion, cancellation or timeout), the IOCB is
+			delivered to the output mailbox <code>outMbox</code>.
+			<par/>
+			The "consumer" task retrieves the IOCB from the output
+			mailbox and extracts results and completion status using
+			<code>QIO_result</code>. In most cases, the consumer
+			would then return the IOCB to its pool.
+			<par/>
+			The <code>iopars</code> argument provides a general
+			mechanism to pass device-specific parameters to the
+			driver routines. The <code>iopars</code> object has a
+			standardised conventional format. The content and
+			interpretation of the <code>iopars</code> object will
+			depend on the particular device and should be described
+			in the device driver software documentation. A copy of
+			the <code>iopars</code> parameter is stored within the
+			driver, and thus need not be preserved after the
+			<code>QIO_qio</code> call.
+			<par/>
+			Operations which do not complete within the specified
+			<code>timeout</code> will be delivered with a
+			<code>QIO_TIMEOUT</code> completion status. However, a
+			limitation of the timeout system is that, if a device
+			does not provide a "cancel" driver function, the
+			operation will not time-out once it has been started. A
+			negative <code>timeout</code> implies infinite wait.
+			Zero <code>timeout</code> behaviour is undefined and
+			device specific. Zero <code>timeout</code> values should
+			not be used.
+			<par/>
+			The optional <code>compFunc</code> argument allows the
+			caller to provide a customised I/O "completion function".
+			Completion functions are executed either instead of or
+			in addition to the QIO system's normal I/O completion
+			activity. The most common use for a user-supplied
+			completion function is in conjunction with a device
+			driver for a simple "fire and forget" output device. The
+			completion function may dispose of the IOCB and other
+			buffers, instead of having the IOCB delivered to the
+			output mailbox. This removes the need for a separate
+			"consumer" task just to tidy up after the I/O operation.
+			Another common use is to provide additional signaling of
+			IO completion, for example by setting event flags.
+			<par/>
+			Completion functions may return non-zero (<code>TRUE</code>) to
+			indicate that they have handled the I/O operation
+			completely and that the IOCB should not be delivered to
+			the output mailbox (a <code>NULL</code> value for
+			<code>outMbox</code> is acceptable in such cases).
+			Alternatively, if the completion function returns zero
+			(<code>FALSE</code>), the QIO system's normal activities
+			will occur in addition. Obviously, a completion function
+			which releases the IOCB for re-use, <emph>must</emph>
+			return non-zero (<code>TRUE</code>) or the system will behave badly.
+			<par/>
+			QIO completion functions are executed in interrupt
+			context which means that they should be kept short and
+			non-blocking. Completion functions must not make any
+			kernel or QIO calls with scheduling implications, other
+			than <code>KRN_setSemaphore</code>,
+			<code>KRN_setFlags</code>, <code>KRN_putMbox</code> or
+			<code>KRN_returnPool</code>.
+			</description>
+		</func>
+		<func name="QIO_qioWait">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<arg type="QIO_IOPARS_T *" name="iopars" traceable="Y">Pointer to
+				device specific I/O parameter block.</arg>
+			<arg type="int32_t" name="timeout">Timeout (in scheduler
+				clock ticks).</arg>
+			<return type="QIO_STATUS_T">
+				<enum>
+					<item val="QIO_NORMAL">Normal
+						completion</item>
+					<item val="QIO_CANCEL">Operation
+						cancelled by another task</item>
+					<item val="QIO_TIMEOUT">Operation timed
+						out</item>
+				</enum>
+			</return>
+			<limitations>
+            <precondition>((dev != NULL) &amp;&amp; (iopars != NULL))</precondition>
+            <postcondition>((_RESULT &gt;= QIO_NORMAL) &amp;&amp; (_RESULT &lt;= QIO_TIMEOUT))</postcondition>
+            </limitations>
+			<description>
+			<code>QIO_qioWait</code> provides a simplified form of
+			<code>QIO_qio</code> for use when simple synchronous
+			blocking
+			IO behaviour is sufficient. A single call to
+			<code>QIO_qioWait</code> replaces both the calls to
+			<code>QIO_qio</code> and <code>QIO_result</code> and the
+			need for explicit management of mailboxes, IOCBs etc.
+			<par/>
+			The limitation on the timeout system noted in the
+			description of <code>QIO_qio</code> applies to this
+			function also. A negative <code>timeout</code> implies
+			infinite wait. Zero <code>timeout</code> behaviour is
+			undefined and device specific. Zero <code>timeout</code>
+			values should not be used.
+			</description>
+		</func>
+		<func name="QIO_reset" vis="virtual">
+			<arg type="QIO_SYS_T *" name="qioSys">QIO system object.
+			</arg>
+			<return type="void"/>
+			<description>Obsolete initialisation call retained for backwards
+				compatibility.</description>
+		</func>
+		<func name="QIO_result">
+			<arg type="KRN_MAILBOX_T *" name="mbox" traceable="Y">Pointer to
+				result mailbox.</arg>
+			<arg type="QIO_DEVICE_T **" name="dev">Receives pointer
+				to device object.</arg>
+			<arg type="QIO_STATUS_T *" name="status">Receives QIO
+				completion status.</arg>
+			<arg type="QIO_IOPARS_T *" name="iopars" traceable="Y">Pointer to
+			object which receives device specific I/O parameters.
+			</arg>
+			<arg type="int32_t" name="timeout">Timeout (in scheduler
+				ticks).</arg>
+			<return type="QIO_IOCB_T *">Result IOCB or
+				<code>NULL</code>.</return>
+			<limitations>
+            <precondition>((mbox != NULL) &amp;&amp; (dev != NULL) &amp;&amp; (status != NULL) &amp;&amp; (iopars != NULL))</precondition>
+            </limitations>
+			<description>Retrieves the result of an I/O operation
+			from a mailbox (assumed to contain only I/O completion
+			messages). In general, this retrieves the same
+			information as was provided to the corresponding
+			<code>QIO_qio</code> call. In some cases however, the
+			device specific parameters may have been changed (by the
+			driver) to provide additional information (for example a
+			maximum byte count request parameter might be changed to
+			a count of bytes actually received).
+			<par/>
+			The completion <code>status</code> must always be
+			inspected to determine whether the operation completed
+			normally, was cancelled or timed out.
+			<par/>
+			The <code>dev</code> argument receives a pointer to the
+			device object which performed the operation. This can be
+			useful when the results of multiples devices are
+			directed to the same mailbox. The <code>dev</code>
+			result can be used to distinguish which result came from
+			which device. The <code>timeout</code> parameter refers
+			to the fetch from the mailbox. It is completely
+			independent of the <code>QIO_qio</code> timeout. Just
+			because this function times out (returning
+			<code>NULL</code>), it does <emph>not</emph> mean that
+			an I/O operation has timed out.</description>
+		</func>
+		<func name="QIO_start">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(dev != NULL)</precondition>
+            </limitations>
+			<description>This function is for use only in custom
+			device ISRs and QIO_STARTFUNC_T handlers. It is called
+			at device IPL to indicate to the QIO system that the
+			next logical I/O operation (if any) may be started.
+			<par/>
+			Most device drivers use the default ISR (which calls
+			<code>QIO_complete</code> and <code>QIO_start</code> for
+			you) so you won't often need to use this function. It
+			should only be used in QIO_STARTFUNC_T handlers to chain
+			processing of another device, and care should be taken
+			to prevent recursion.
+			</description>
+		</func>
+		<func name="QIO_unload">
+			<arg type="QIO_DEVICE_T *" name="dev" traceable="Y">Pointer to device
+				object.</arg>
+			<return type="void"/>
+			<limitations>
+            <precondition>(dev != NULL)</precondition>
+            </limitations>
+			<description>Unloads the specified device.
+			<par/>
+			This operation disables interrupts for the device. It
+			also calls the device's driver shutdown function if it
+			has one.
+			<par/>
+			It is unusual to unload a device driver. This is
+			normally only necessary if you need to hand control of a
+			device interrupt from one processor to another,
+			which is probably indicative of a system design problem.
+			<code>QIO_unload</code> should be treated as an escape
+			route for such system level problems, <emph>not</emph>
+			as a recommended procedure.
+			<par/>
+			The <code>dev</code> argument must point to a valid
+			device object (i.e., one that has been initialised)
+			which is in the disabled state. <code>QIO_unload</code>
+			does not contain any internal error checks, so failure
+			to meet this condition may cause unpredictable
+			behaviour.
+			<par/>
+			After unloading a device, the <code>dev</code> object is
+			invalid and must not be used without re-initialisation
+			by <code>QIO_init</code>.
+			</description>
+		</func>
+		<epilogue>
+			#define QIO_reset(QIOSYS)
+/* complete the QIO_IOCB_T definition... */
+struct  QIO_iocbTag{<nl/>
+			<tab/>KRN_POOLLINK; /* IOCBS are pool-able (and <nl/>
+			<tab/><tab/>hence also list-able and queue-able) */<nl/>
+			<tab/>PARAHEAD;<nl/>
+			<tab/>QIO_DEVICE_T *device;
+				<tab/>KRN_MAILBOX_T *mailbox;<nl/>
+			<tab/>QIO_COMPFUNC_T *compfunc;<nl/>
+			<tab/>QIO_IOPARS_T ioParameters;<nl/>
+			<tab/>QIO_STATE_T ioState;<nl/>
+			<tab/>int32_t timerSet;<nl/>
+			<tab/>KRN_TIMER_T timer;<nl/>
+			<tab/>PARATAIL;<nl/>
+			};<nl/>
+/* complete the QIO_DEVICE_T definition... */
+struct QIO_devTag{<nl/>
+			<tab/>PARAHEAD;<nl/>
+			<tab/>DQ_T pendingQueue;<nl/>
+			<tab/>DQ_T activeQueue;<nl/>
+			<tab/>const char *devName;<nl/>
+			<tab/>QIO_DRIVER_T const *driver;<nl/>
+			<tab/>QIO_DEVPOWER_T powerClass;<nl/>
+			<tab/>QIO_POWERCMD_T powerState;<nl/>
+			<tab/>int32_t numIrqs;<nl/>
+			<tab/>IRQ_DESC_T *irqDescs;<nl/>
+			<tab/>int32_t enabled;<nl/>
+			<tab/>int32_t id;<nl/>
+			<tab/>int32_t active;<nl/>
+			<tab/>int32_t rank;<nl/>
+			<tab/>PARATAIL;<nl/>
+			};<nl/>
+/* complete QIO_SYS_T definition... */
+struct QIO_sysTag {<nl/>
+			};<nl/>
+		</epilogue>
+	</interface>
+</module>

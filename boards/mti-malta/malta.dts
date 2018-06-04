@@ -1,0 +1,92 @@
+/dts-v1/;
+
+/memreserve/ 0x00000000 0x00001000;	/* YAMON exception vectors */
+/memreserve/ 0x00001000 0x000ef000;	/* YAMON */
+/memreserve/ 0x000f0000 0x00010000;	/* PIIX4 ISA memory */
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "mti,malta";
+	interrupt-parent = <&cpuirq>;
+
+	clocks {
+		UART_CLK: UART_CLK {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <3686400>;
+		};
+		CPU_CLK: CPU_CLK {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <31000000>;
+		};
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		cpu@0 {
+			compatible = "mti,embedded-cpu", "mti,mips";
+			reg = <0 1>;
+			mti,vmem = <0x80000000 0x800000>;
+			clocks = <&CPU_CLK>;
+		};
+		cpu@1 {
+			compatible = "mti,embedded-cpu", "mti,mips";
+			reg = <1 1>;
+			mti,vmem = <0x80800000 0x800000>;
+			clocks = <&CPU_CLK>;
+		};
+	};
+
+	drives {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ramdisk@0 {
+			compatible = "mti,ram-disk";
+			reg = <0x01fa5000 0x5a000>;
+			mti,vmem = <0x81fa5000 0x5a000>;
+		};
+	};
+
+	cpuirq: interrupt-controller {
+		compatible = "mti,cpu-interrupt-controller";
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		#address-cells = <0>;
+	};
+
+	rings {
+		compatible = "mti,meos-shared";
+		mti,vmem = <0x817ff000 0x1000>;
+
+		processor@0 {
+			compatible = "mti,meos-ring";
+			reg = <0>;
+		};
+
+		processor@1 {
+			compatible = "mti,meos-ring";
+			reg = <1>;
+		};
+	};
+
+	uarts {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ttyS0@1f000900 {
+			compatible = "ns16550a";
+			reg = <0x1f000900 0x100>;
+			reg-shift = <2>;
+			clock-frequency = <1843200>;
+			interrupts = <0 2 1>;
+		};
+		fdc@0 {
+			compatible = "mti,fdc";
+			reg = <0 0>;
+			channel = <2>;
+		};
+	};
+};

@@ -1,0 +1,13 @@
+config DRIVER_DWETHGMAC
+depends on LWIP
+bool "DesignWare Ethernet GMAC"
+help
+	DesignWare Ethernet GMAC driver.
+
+config DRIVER_DWETHGMAC_NUM_DESCS
+depends on DRIVER_DWETHGMAC
+int "Number of DMA buffers"
+default 32
+help
+	Specifies the number of DMA buffers reserved each for transmit and
+	receive.
